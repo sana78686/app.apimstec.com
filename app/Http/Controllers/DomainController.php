@@ -237,8 +237,10 @@ class DomainController extends Controller
     }
 
     /**
-     * Drop all tables in the domain's database, re-run all migrations,
-     * then run the database seeders. USE WITH CAUTION — destroys all data.
+     * Drop all tables in the domain's database, then re-run all migrations.
+     * Uses manual table dropping instead of `migrate:fresh` to avoid the
+     * default-connection seeder issue (seeder runs on mysql, not tenant).
+     * USE WITH CAUTION — destroys all data in the tenant DB.
      */
     public function migrateFresh(Domain $domain): RedirectResponse
     {
@@ -247,16 +249,53 @@ class DomainController extends Controller
             DB::purge('tenant');
             DB::reconnect('tenant');
 
-            Artisan::call('migrate:fresh', [
+            $conn = DB::connection('tenant');
+
+            // Disable FK checks so we can drop tables in any order
+            $conn->statement('SET FOREIGN_KEY_CHECKS=0');
+            $tables = $conn->select('SHOW TABLES');
+            foreach ($tables as $row) {
+                $table = array_values((array) $row)[0];
+                $conn->statement("DROP TABLE IF EXISTS `{$table}`");
+            }
+            $conn->statement('SET FOREIGN_KEY_CHECKS=1');
+
+            // Re-run all migrations on the tenant connection
+            Artisan::call('migrate', [
                 '--database' => 'tenant',
                 '--force'    => true,
-                '--seed'     => true,
             ]);
 
-            $output = Artisan::output();
-            return back()->with('success', "Fresh migrate + seed complete for \"{$domain->name}\". " . trim($output));
+            $output = trim(Artisan::output());
+            $summary = $output ?: 'All migrations ran successfully.';
+
+            return back()->with('success', "Fresh migrate complete for \"{$domain->name}\". All tables rebuilt. {$summary}");
         } catch (\Throwable $e) {
             return back()->with('error', 'Fresh migration failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Roll back the last batch of migrations on the domain's database.
+     */
+    public function rollbackSchema(Domain $domain): RedirectResponse
+    {
+        try {
+            config(['database.connections.tenant' => $domain->connectionConfig()]);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+
+            Artisan::call('migrate:rollback', [
+                '--database' => 'tenant',
+                '--force'    => true,
+            ]);
+
+            $output = trim(Artisan::output());
+            $summary = $output ?: 'Last migration batch rolled back.';
+
+            return back()->with('success', "Rollback complete for \"{$domain->name}\". {$summary}");
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Rollback failed: ' . $e->getMessage());
         }
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
   domains:        { type: Array,  default: () => [] },
@@ -9,8 +9,19 @@ const props = defineProps({
   flash:          { type: Object, default: () => ({}) },
 });
 
-const switching   = ref(null);
-const testResults = ref({});
+const switching    = ref(null);
+const testResults  = ref({});
+const schemaOpen   = ref(null); // which domain's schema dropdown is open
+
+/* ── Close schema dropdown on outside click ── */
+function onOutsideClick() { schemaOpen.value = null; }
+onMounted(()    => document.addEventListener('click', onOutsideClick));
+onBeforeUnmount(() => document.removeEventListener('click', onOutsideClick));
+
+function toggleSchema(id, e) {
+  e.stopPropagation();
+  schemaOpen.value = schemaOpen.value === id ? null : id;
+}
 
 /* ── Domain switch ── */
 function switchDomain(id) {
@@ -23,6 +34,7 @@ function switchDomain(id) {
 
 /* ── Schema actions ── */
 function syncSchema(domain) {
+  schemaOpen.value = null;
   if (!confirm(
     `Run pending migrations on "${domain.name}" database?\n\n` +
     `✓ Safe — only adds new tables/columns, no data is deleted.`
@@ -30,10 +42,20 @@ function syncSchema(domain) {
   router.post(route('domains.sync-schema', domain.id), {}, { preserveScroll: true });
 }
 
-function migrateFresh(domain) {
+function rollbackSchema(domain) {
+  schemaOpen.value = null;
   if (!confirm(
-    `⚠️ DANGER — Fresh migrate + seed on "${domain.name}"?\n\n` +
-    `This will:\n  • DROP all tables\n  • Re-create from scratch\n  • Run all seeders\n\n` +
+    `Roll back the last migration batch on "${domain.name}"?\n\n` +
+    `This will undo the most recent migration. Data in removed columns/tables may be lost.`
+  )) return;
+  router.post(route('domains.rollback-schema', domain.id), {}, { preserveScroll: true });
+}
+
+function migrateFresh(domain) {
+  schemaOpen.value = null;
+  if (!confirm(
+    `⚠️ DANGER — Fresh migrate on "${domain.name}"?\n\n` +
+    `This will:\n  • DROP all tables\n  • Re-create from scratch\n\n` +
     `ALL EXISTING DATA WILL BE PERMANENTLY DELETED.\n\nClick OK only if you are 100% sure.`
   )) return;
   router.post(route('domains.migrate-fresh', domain.id), {}, { preserveScroll: true });
@@ -88,12 +110,16 @@ function confirmDelete(domain) {
         >+ Add domain</Link>
       </div>
 
-      <!-- Flash -->
-      <div v-if="flash?.success" class="alert alert-success alert-dismissible fade show mb-3">
-        {{ flash.success }}<button type="button" class="btn-close" data-bs-dismiss="alert" />
+      <!-- Flash messages -->
+      <div v-if="flash?.success" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" class="me-2" style="vertical-align:-.15em"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+        {{ flash.success }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" />
       </div>
-      <div v-if="flash?.error" class="alert alert-danger alert-dismissible fade show mb-3">
-        {{ flash.error }}<button type="button" class="btn-close" data-bs-dismiss="alert" />
+      <div v-if="flash?.error" class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16" class="me-2" style="vertical-align:-.15em"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>
+        <strong>Error:</strong> {{ flash.error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" />
       </div>
 
       <!-- Active domain banner -->
@@ -117,8 +143,8 @@ function confirmDelete(domain) {
                 <th>Domain</th>
                 <th>Database</th>
                 <th>Status</th>
-                <th style="min-width:120px;">Schema</th>
-                <th style="min-width:160px;">Actions</th>
+                <th style="min-width:110px;">Schema</th>
+                <th style="min-width:180px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -149,27 +175,68 @@ function confirmDelete(domain) {
                   </span>
                 </td>
 
-                <!-- Schema column — both actions listed clearly -->
+                <!-- Schema dropdown -->
                 <td>
-                  <div class="d-flex flex-column gap-1">
+                  <div class="domain-schema-wrap" style="position:relative;display:inline-block;">
                     <button
-                      class="admin-list-link text-start"
-                      style="font-size:.8rem;"
-                      title="Run pending migrations — safe, adds new tables/columns only, no data deleted"
-                      @click="syncSchema(d)"
+                      class="btn btn-sm btn-outline-secondary domain-schema-btn"
+                      title="Database schema management options"
+                      @click="toggleSchema(d.id, $event)"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                      Sync schema
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;vertical-align:middle;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+                      Schema
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:2px;vertical-align:middle;"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
-                    <button
-                      class="admin-list-link admin-list-link-danger text-start"
-                      style="font-size:.8rem;"
-                      title="⚠️ DESTRUCTIVE: Drops ALL tables, re-migrates and seeds. All data lost."
-                      @click="migrateFresh(d)"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
-                      Fresh + Seed ⚠️
-                    </button>
+
+                    <!-- Dropdown menu -->
+                    <div v-if="schemaOpen === d.id" class="domain-schema-menu" @click.stop>
+                      <!-- Sync -->
+                      <button
+                        class="domain-schema-item"
+                        title="Run pending migrations — safe, adds new tables/columns only"
+                        @click="syncSchema(d)"
+                      >
+                        <span class="domain-schema-icon text-primary">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        </span>
+                        <span>
+                          <strong>Sync schema</strong>
+                          <small class="d-block text-muted" style="font-size:.72rem;">Run pending migrations (safe)</small>
+                        </span>
+                      </button>
+
+                      <!-- Rollback -->
+                      <button
+                        class="domain-schema-item"
+                        title="Roll back the last migration batch"
+                        @click="rollbackSchema(d)"
+                      >
+                        <span class="domain-schema-icon text-warning">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
+                        </span>
+                        <span>
+                          <strong>Rollback last</strong>
+                          <small class="d-block text-muted" style="font-size:.72rem;">Undo last migration batch</small>
+                        </span>
+                      </button>
+
+                      <div class="domain-schema-divider"></div>
+
+                      <!-- Fresh -->
+                      <button
+                        class="domain-schema-item domain-schema-item-danger"
+                        title="⚠️ DESTRUCTIVE: Drop ALL tables, re-migrate from scratch. All data lost."
+                        @click="migrateFresh(d)"
+                      >
+                        <span class="domain-schema-icon text-danger">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </span>
+                        <span>
+                          <strong>Fresh migrate ⚠️</strong>
+                          <small class="d-block" style="font-size:.72rem;color:#dc3545;">Drops ALL tables — data lost!</small>
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </td>
 
@@ -187,11 +254,11 @@ function confirmDelete(domain) {
                   </div>
 
                   <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <!-- Switch -->
+                    <!-- Switch / Active -->
                     <button
                       class="admin-list-link"
                       :disabled="switching === d.id || d.id === activeDomainId"
-                      :title="d.id === activeDomainId ? 'Already active' : 'Switch to this domain\'s database'"
+                      :title="d.id === activeDomainId ? 'Already active — currently managing this domain' : 'Switch to this domain\'s database'"
                       @click="switchDomain(d.id)"
                     >
                       {{ d.id === activeDomainId ? 'Active' : (switching === d.id ? 'Switching…' : 'Switch') }}
@@ -208,13 +275,17 @@ function confirmDelete(domain) {
                     </button>
 
                     <!-- Edit -->
-                    <Link :href="route('domains.edit', d.id)" class="admin-list-link" title="Edit credentials and settings">Edit</Link>
+                    <Link
+                      :href="route('domains.edit', d.id)"
+                      class="admin-list-link"
+                      title="Edit credentials and domain settings"
+                    >Edit</Link>
 
                     <!-- Remove -->
                     <button
                       v-if="!d.is_default"
                       class="admin-list-link admin-list-link-danger"
-                      title="Remove from CMS (database is NOT deleted)"
+                      title="Remove from CMS — actual database is NOT deleted"
                       @click="confirmDelete(d)"
                     >Remove</button>
                   </div>
@@ -232,7 +303,7 @@ function confirmDelete(domain) {
         </div>
       </div>
 
-      <!-- Legend -->
+      <!-- Column guide legend -->
       <div class="mt-3 p-3 bg-light rounded border small text-muted">
         <strong>Column guide:</strong>
         <ul class="mb-0 mt-1" style="padding-left:1.2rem;line-height:1.9;">
@@ -240,7 +311,8 @@ function confirmDelete(domain) {
           <li><strong>Test DB</strong> — pings the database to verify credentials are correct (green ✓ / red ✗)</li>
           <li><strong>Edit</strong> — update domain name, URL or database credentials</li>
           <li><strong>Schema → Sync schema</strong> — runs pending migrations, safe, no data deleted</li>
-          <li><strong>Schema → Fresh + Seed ⚠️</strong> — drops ALL tables, recreates and seeds (use on empty DBs only)</li>
+          <li><strong>Schema → Rollback last</strong> — undoes the last migration batch</li>
+          <li><strong>Schema → Fresh migrate ⚠️</strong> — drops ALL tables, recreates from scratch (data is lost!)</li>
           <li><strong>Remove</strong> — disconnects domain from CMS, actual database is untouched</li>
         </ul>
       </div>
@@ -248,3 +320,70 @@ function confirmDelete(domain) {
     </div>
   </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/* Schema dropdown */
+.domain-schema-btn {
+  font-size: .8rem;
+  padding: .25rem .6rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.domain-schema-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 210px;
+  background: #fff;
+  border: 1px solid #e2e2ee;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  padding: .35rem;
+  animation: fadeInDown .1s ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.domain-schema-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  width: 100%;
+  padding: .5rem .6rem;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  text-align: left;
+  cursor: pointer;
+  font-size: .8125rem;
+  color: #222;
+  transition: background .1s;
+}
+
+.domain-schema-item:hover {
+  background: #f4f4fb;
+}
+
+.domain-schema-item-danger:hover {
+  background: #fff5f5;
+}
+
+.domain-schema-icon {
+  margin-top: .15rem;
+  flex-shrink: 0;
+}
+
+.domain-schema-divider {
+  height: 1px;
+  background: #eee;
+  margin: .3rem .2rem;
+}
+</style>

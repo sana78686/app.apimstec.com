@@ -56,6 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/domains/test-connection', [DomainController::class, 'testConnection'])->name('domains.test-connection');
     Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])->name('domains.sync-schema');
     Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])->name('domains.migrate-fresh');
+    Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])->name('domains.rollback-schema');
     Route::post('/domains/{domain}/test-connection', [DomainController::class, 'testSavedConnection'])->name('domains.test-saved-connection');
 });
 
