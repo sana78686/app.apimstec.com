@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const page = usePage();
 const blogs = ref([]);
@@ -19,6 +20,14 @@ const filteredBlogs = computed(() => {
       (b.excerpt || '').toLowerCase().includes(q)
   );
 });
+
+const perPage     = 20;
+const currentPage = ref(1);
+const pagedBlogs  = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredBlogs.value.slice(start, start + perPage);
+});
+watch(searchQuery, () => { currentPage.value = 1; });
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
@@ -139,7 +148,7 @@ async function changeVisibility(b, newVisibility) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="b in filteredBlogs" :key="b.id">
+            <tr v-for="b in pagedBlogs" :key="b.id">
               <td>{{ b.title }}</td>
               <td><code class="admin-list-code">{{ b.slug }}</code></td>
               <td>{{ b.author?.name ?? '—' }}</td>
@@ -179,6 +188,13 @@ async function changeVisibility(b, newVisibility) {
             </tr>
           </tbody>
         </table>
+        <Pagination
+          v-if="!loading"
+          :total="filteredBlogs.length"
+          :per-page="perPage"
+          :current-page="currentPage"
+          @update:current-page="currentPage = $event"
+        />
         <p v-if="!loading && !filteredBlogs.length" class="admin-text-muted" style="padding: 1.5rem;">No blog posts yet. Add one to get started.</p>
       </div>
     </div>

@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
@@ -27,6 +28,14 @@ const filteredPages = computed(() => {
       (p.slug || '').toLowerCase().includes(q)
   );
 });
+
+const perPage     = 20;
+const currentPage = ref(1);
+const pagedPages  = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredPages.value.slice(start, start + perPage);
+});
+watch(searchQuery, () => { currentPage.value = 1; });
 
 function statusTitle(seo_status) {
   if (seo_status === 'ok') return 'SEO requirements met';
@@ -88,7 +97,7 @@ function statusTitle(seo_status) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in filteredPages" :key="p.id">
+            <tr v-for="p in pagedPages" :key="p.id">
               <td class="align-middle">
                 <span
                   v-if="p.seo_status"
@@ -123,6 +132,12 @@ function statusTitle(seo_status) {
             </tr>
           </tbody>
         </table>
+        <Pagination
+          :total="filteredPages.length"
+          :per-page="perPage"
+          :current-page="currentPage"
+          @update:current-page="currentPage = $event"
+        />
         <p v-if="!pages.length" class="admin-text-muted" style="padding: 1.5rem;">No pages have meta tags set yet. Use <strong>Create meta tag</strong> to select a page and set its meta title, description, canonical and robots.</p>
         <p v-else-if="!filteredPages.length" class="admin-text-muted" style="padding: 1.5rem;">No pages match your search.</p>
       </div>

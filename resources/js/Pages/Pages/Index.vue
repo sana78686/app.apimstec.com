@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const page = usePage();
 const pages = ref([]);
@@ -34,6 +35,14 @@ const filteredPages = computed(() => {
       (p.slug || '').toLowerCase().includes(q)
   );
 });
+
+const perPage     = 20;
+const currentPage = ref(1);
+const pagedPages  = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredPages.value.slice(start, start + perPage);
+});
+watch(searchQuery, () => { currentPage.value = 1; });
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
@@ -145,7 +154,7 @@ async function destroy(p) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in filteredPages" :key="p.id" :class="{ 'admin-list-row-child': p._level > 0 }">
+            <tr v-for="p in pagedPages" :key="p.id" :class="{ 'admin-list-row-child': p._level > 0 }">
               <td :style="p._level ? { paddingLeft: (p._level * 1.25 + 0.5) + 'rem' } : {}">
                 <span v-if="p._level">↳</span>
                 {{ p.title }}
@@ -185,6 +194,13 @@ async function destroy(p) {
             </tr>
           </tbody>
         </table>
+        <Pagination
+          v-if="!loading"
+          :total="filteredPages.length"
+          :per-page="perPage"
+          :current-page="currentPage"
+          @update:current-page="currentPage = $event"
+        />
         <p v-if="!loading && !filteredPages.length" class="admin-text-muted" style="padding: 1.5rem;">No pages yet. Add a page to get started.</p>
       </div>
     </div>
