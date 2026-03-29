@@ -33,6 +33,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Clear any previously selected domain so the picker is always shown after login
+        $request->session()->forget('active_domain_id');
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
