@@ -36,8 +36,8 @@ Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots');
 
 Route::get('/dashboard', function () {
-    // Redirect to domain picker if domains exist and none is selected yet
-    if (!session('active_domain_id') && \App\Models\Domain::where('is_active', true)->exists()) {
+    // Always require domain selection — redirect until a domain is active in session
+    if (!session('active_domain_id')) {
         return redirect()->route('domains.select');
     }
     return Inertia::render('Dashboard');

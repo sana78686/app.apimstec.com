@@ -71,9 +71,15 @@ class DomainController extends Controller
         }
 
         $data['db_password'] = encrypt($data['db_password']);
-        Domain::create($data);
+        $domain = Domain::create($data);
 
-        return redirect()->route('domains.index')->with('success', "Domain \"{$data['name']}\" added.");
+        // auto_select=true: immediately activate this domain and go to dashboard
+        if ($request->boolean('auto_select')) {
+            session(['active_domain_id' => $domain->id]);
+            return redirect()->route('dashboard')->with('success', "Now managing: {$domain->name}");
+        }
+
+        return redirect()->route('domains.select')->with('success', "Domain \"{$domain->name}\" added.");
     }
 
     public function edit(Domain $domain): Response

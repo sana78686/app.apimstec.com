@@ -1,0 +1,1 @@
+import{_ as t}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{g as r,t as s,i as o,o as a}from"./app-CXoRSWQe.js";const n={key:0,class:"input-error"},c={__name:"InputError",props:{message:{type:String}},setup(e){return(p,m)=>e.message?(a(),r("p",n,s(e.message),1)):o("",!0)}},u=t(c,[["__scopeId","data-v-353b5d80"]]);export{u as I};
