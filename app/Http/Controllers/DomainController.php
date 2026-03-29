@@ -12,6 +12,53 @@ use Inertia\Response;
 
 class DomainController extends Controller
 {
+    /**
+     * Test raw DB credentials (from Add/Edit form before saving).
+     * Returns JSON so Vue can show inline result without page reload.
+     */
+    public function testConnection(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'db_host'     => 'required|string',
+            'db_port'     => 'required|integer',
+            'db_name'     => 'required|string',
+            'db_username' => 'required|string',
+            'db_password' => 'required|string',
+        ]);
+
+        return $this->tryConnect(
+            $data['db_host'], $data['db_port'],
+            $data['db_name'], $data['db_username'], $data['db_password']
+        );
+    }
+
+    /**
+     * Test the saved (encrypted) credentials of an existing domain.
+     */
+    public function testSavedConnection(Domain $domain): \Illuminate\Http\JsonResponse
+    {
+        $cfg = $domain->connectionConfig();
+        return $this->tryConnect(
+            $cfg['host'], $cfg['port'],
+            $cfg['database'], $cfg['username'], $cfg['password']
+        );
+    }
+
+    /** Attempt a raw PDO connection and return a JSON result. */
+    private function tryConnect(string $host, int $port, string $db, string $user, string $pass): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
+            new \PDO($dsn, $user, $pass, [
+                \PDO::ATTR_TIMEOUT => 5,
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+            return response()->json(['success' => true,  'message' => 'Connection successful — credentials are correct!']);
+        } catch (\PDOException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
     /** Post-login domain picker page. */
     public function select(): Response
     {
@@ -167,8 +214,8 @@ class DomainController extends Controller
     }
 
     /**
-     * Run migrations on the selected domain's database so it gets
-     * the same schema as the master DB (one-click setup for new domains).
+     * Run pending migrations on the domain's database — safe, no data loss.
+     * Adds any new tables/columns that don't exist yet.
      */
     public function syncSchema(Domain $domain): RedirectResponse
     {
@@ -180,13 +227,36 @@ class DomainController extends Controller
             Artisan::call('migrate', [
                 '--database' => 'tenant',
                 '--force'    => true,
-                '--path'     => 'database/migrations/tenant',
             ]);
 
             $output = Artisan::output();
-            return back()->with('success', "Schema synced for {$domain->domain}. " . trim($output));
+            return back()->with('success', "Schema synced for \"{$domain->name}\". " . trim($output));
         } catch (\Throwable $e) {
             return back()->with('error', 'Schema sync failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Drop all tables in the domain's database, re-run all migrations,
+     * then run the database seeders. USE WITH CAUTION — destroys all data.
+     */
+    public function migrateFresh(Domain $domain): RedirectResponse
+    {
+        try {
+            config(['database.connections.tenant' => $domain->connectionConfig()]);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+
+            Artisan::call('migrate:fresh', [
+                '--database' => 'tenant',
+                '--force'    => true,
+                '--seed'     => true,
+            ]);
+
+            $output = Artisan::output();
+            return back()->with('success', "Fresh migrate + seed complete for \"{$domain->name}\". " . trim($output));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Fresh migration failed: ' . $e->getMessage());
         }
     }
 }
