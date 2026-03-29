@@ -57,4 +57,32 @@ class Domain extends Model
             'engine'    => null,
         ];
     }
+
+    /**
+     * True when this domain's credentials point at the same database as the CMS master connection.
+     * Schema actions must never run on master (domains table + admin data live there).
+     */
+    public function targetsMasterDatabase(): bool
+    {
+        $master = config('database.connections.mysql', []);
+        $mHost  = self::normalizeDbHost((string) ($master['host'] ?? ''));
+        $mPort  = (int) ($master['port'] ?? 3306);
+        $mDb    = (string) ($master['database'] ?? '');
+
+        $dHost = self::normalizeDbHost((string) $this->db_host);
+        $dPort = (int) $this->db_port;
+        $dDb   = (string) $this->db_name;
+
+        return $dHost === $mHost && $dPort === $mPort && $dDb === $mDb;
+    }
+
+    private static function normalizeDbHost(string $host): string
+    {
+        $h = strtolower(trim($host));
+        if ($h === 'localhost') {
+            $h = '127.0.0.1';
+        }
+
+        return $h;
+    }
 }

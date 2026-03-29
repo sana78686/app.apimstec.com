@@ -77,14 +77,16 @@ class DomainController extends Controller
     {
         $domains = Domain::orderByDesc('is_default')->orderBy('name')->get()
             ->map(fn (Domain $d) => [
-                'id'           => $d->id,
-                'name'         => $d->name,
-                'domain'       => $d->domain,
-                'frontend_url' => $d->frontend_url,
-                'db_host'      => $d->db_host,
-                'db_name'      => $d->db_name,
-                'is_active'    => $d->is_active,
-                'is_default'   => $d->is_default,
+                'id'             => $d->id,
+                'name'           => $d->name,
+                'domain'         => $d->domain,
+                'frontend_url'   => $d->frontend_url,
+                'db_host'        => $d->db_host,
+                'db_name'        => $d->db_name,
+                'is_active'      => $d->is_active,
+                'is_default'     => $d->is_default,
+                /** Schema buttons only for a separate site DB — never the CMS master */
+                'can_run_schema' => ! $d->targetsMasterDatabase(),
             ]);
 
         return Inertia::render('Domains/Index', [
@@ -214,25 +216,67 @@ class DomainController extends Controller
     }
 
     /**
+     * Register a one-off Laravel connection for this domain only, so schema commands never
+     * touch the shared `tenant` default (which mirrors master) or the `mysql` connection.
+     *
+     * @throws \InvalidArgumentException when domain points at the master CMS database
+     */
+    private function schemaConnectionForDomain(Domain $domain): string
+    {
+        if ($domain->targetsMasterDatabase()) {
+            throw new \InvalidArgumentException(
+                'This domain uses the same database as the CMS master. Schema actions run only on each website’s own database — create a separate DB in Plesk for this site.'
+            );
+        }
+
+        $name = 'domain_schema_'.$domain->id;
+        config(["database.connections.{$name}" => $domain->connectionConfig()]);
+        DB::purge($name);
+        DB::reconnect($name);
+
+        $resolved = DB::connection($name)->getDatabaseName();
+        if ($resolved !== $domain->db_name) {
+            DB::purge($name);
+            throw new \RuntimeException(
+                'Could not verify target database (expected "'.$domain->db_name.'", got "'.$resolved.'").'
+            );
+        }
+
+        return $name;
+    }
+
+    private function schemaTargetLabel(Domain $domain): string
+    {
+        return $domain->db_host.' / '.$domain->db_name;
+    }
+
+    /**
      * Run pending migrations on the domain's database — safe, no data loss.
      * Adds any new tables/columns that don't exist yet.
      */
     public function syncSchema(Domain $domain): RedirectResponse
     {
+        $connName = null;
         try {
-            config(['database.connections.tenant' => $domain->connectionConfig()]);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
+            $connName = $this->schemaConnectionForDomain($domain);
 
             Artisan::call('migrate', [
-                '--database' => 'tenant',
+                '--database' => $connName,
                 '--force'    => true,
             ]);
 
             $output = Artisan::output();
-            return back()->with('success', "Schema synced for \"{$domain->name}\". " . trim($output));
+            $target = $this->schemaTargetLabel($domain);
+
+            return back()->with('success', "Schema synced for \"{$domain->name}\" on {$target}. ".trim($output));
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            return back()->with('error', 'Schema sync failed: ' . $e->getMessage());
+            return back()->with('error', 'Schema sync failed: '.$e->getMessage());
+        } finally {
+            if ($connName !== null) {
+                DB::purge($connName);
+            }
         }
     }
 
@@ -244,34 +288,38 @@ class DomainController extends Controller
      */
     public function migrateFresh(Domain $domain): RedirectResponse
     {
+        $connName = null;
         try {
-            config(['database.connections.tenant' => $domain->connectionConfig()]);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-
-            $conn = DB::connection('tenant');
+            $connName = $this->schemaConnectionForDomain($domain);
+            $conn     = DB::connection($connName);
 
             // Disable FK checks so we can drop tables in any order
             $conn->statement('SET FOREIGN_KEY_CHECKS=0');
             $tables = $conn->select('SHOW TABLES');
             foreach ($tables as $row) {
                 $table = array_values((array) $row)[0];
-                $conn->statement("DROP TABLE IF EXISTS `{$table}`");
+                $conn->statement('DROP TABLE IF EXISTS `'.$table.'`');
             }
             $conn->statement('SET FOREIGN_KEY_CHECKS=1');
 
-            // Re-run all migrations on the tenant connection
             Artisan::call('migrate', [
-                '--database' => 'tenant',
+                '--database' => $connName,
                 '--force'    => true,
             ]);
 
-            $output = trim(Artisan::output());
+            $output  = trim(Artisan::output());
             $summary = $output ?: 'All migrations ran successfully.';
+            $target  = $this->schemaTargetLabel($domain);
 
-            return back()->with('success', "Fresh migrate complete for \"{$domain->name}\". All tables rebuilt. {$summary}");
+            return back()->with('success', "Fresh migrate complete for \"{$domain->name}\" on {$target}. All tables rebuilt. {$summary}");
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            return back()->with('error', 'Fresh migration failed: ' . $e->getMessage());
+            return back()->with('error', 'Fresh migration failed: '.$e->getMessage());
+        } finally {
+            if ($connName !== null) {
+                DB::purge($connName);
+            }
         }
     }
 
@@ -280,22 +328,28 @@ class DomainController extends Controller
      */
     public function rollbackSchema(Domain $domain): RedirectResponse
     {
+        $connName = null;
         try {
-            config(['database.connections.tenant' => $domain->connectionConfig()]);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
+            $connName = $this->schemaConnectionForDomain($domain);
 
             Artisan::call('migrate:rollback', [
-                '--database' => 'tenant',
+                '--database' => $connName,
                 '--force'    => true,
             ]);
 
-            $output = trim(Artisan::output());
+            $output  = trim(Artisan::output());
             $summary = $output ?: 'Last migration batch rolled back.';
+            $target  = $this->schemaTargetLabel($domain);
 
-            return back()->with('success', "Rollback complete for \"{$domain->name}\". {$summary}");
+            return back()->with('success', "Rollback complete for \"{$domain->name}\" on {$target}. {$summary}");
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            return back()->with('error', 'Rollback failed: ' . $e->getMessage());
+            return back()->with('error', 'Rollback failed: '.$e->getMessage());
+        } finally {
+            if ($connName !== null) {
+                DB::purge($connName);
+            }
         }
     }
 }

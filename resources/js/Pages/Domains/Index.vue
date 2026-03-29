@@ -32,12 +32,19 @@ function switchDomain(id) {
   });
 }
 
-/* ── Schema actions ── */
+function schemaDbLabel(d) {
+  return `${d.db_host} / ${d.db_name}`;
+}
+
+/* ── Schema actions (each runs only on that row’s database, never the CMS master) ── */
 function syncSchema(domain) {
   schemaOpen.value = null;
   if (!confirm(
-    `Run pending migrations on "${domain.name}" database?\n\n` +
-    `✓ Safe — only adds new tables/columns, no data is deleted.`
+    `Run pending migrations on this website’s database only?\n\n` +
+    `Target: ${schemaDbLabel(domain)}\n` +
+    `Site: "${domain.name}"\n\n` +
+    `✓ Safe — only adds new tables/columns, no data is deleted.\n` +
+    `(The CMS master database is never modified here.)`
   )) return;
   router.post(route('domains.sync-schema', domain.id), {}, { preserveScroll: true });
 }
@@ -45,7 +52,9 @@ function syncSchema(domain) {
 function rollbackSchema(domain) {
   schemaOpen.value = null;
   if (!confirm(
-    `Roll back the last migration batch on "${domain.name}"?\n\n` +
+    `Roll back the last migration batch on this database?\n\n` +
+    `Target: ${schemaDbLabel(domain)}\n` +
+    `Site: "${domain.name}"\n\n` +
     `This will undo the most recent migration. Data in removed columns/tables may be lost.`
   )) return;
   router.post(route('domains.rollback-schema', domain.id), {}, { preserveScroll: true });
@@ -54,9 +63,13 @@ function rollbackSchema(domain) {
 function migrateFresh(domain) {
   schemaOpen.value = null;
   if (!confirm(
-    `⚠️ DANGER — Fresh migrate on "${domain.name}"?\n\n` +
-    `This will:\n  • DROP all tables\n  • Re-create from scratch\n\n` +
-    `ALL EXISTING DATA WILL BE PERMANENTLY DELETED.\n\nClick OK only if you are 100% sure.`
+    `⚠️ DANGER — Fresh migrate on this database only?\n\n` +
+    `Target: ${schemaDbLabel(domain)}\n` +
+    `Site: "${domain.name}"\n\n` +
+    `This will:\n  • DROP all tables in that database\n  • Re-create from scratch\n\n` +
+    `ALL DATA IN THAT DATABASE WILL BE PERMANENTLY DELETED.\n` +
+    `(The CMS master database is not affected.)\n\n` +
+    `Click OK only if you are 100% sure.`
   )) return;
   router.post(route('domains.migrate-fresh', domain.id), {}, { preserveScroll: true });
 }
@@ -175,12 +188,21 @@ function confirmDelete(domain) {
                   </span>
                 </td>
 
-                <!-- Schema dropdown -->
+                <!-- Schema: only when domain has its own DB (not same as CMS master) -->
                 <td>
-                  <div class="domain-schema-wrap" style="position:relative;display:inline-block;">
+                  <span
+                    v-if="d.can_run_schema === false"
+                    class="text-muted small"
+                    title="This domain points at the CMS master database. Use a separate database for the website, then schema tools apply only there."
+                  >—</span>
+                  <div
+                    v-else
+                    class="domain-schema-wrap"
+                    style="position:relative;display:inline-block;"
+                  >
                     <button
                       class="btn btn-sm btn-outline-secondary domain-schema-btn"
-                      title="Database schema management options"
+                      title="Run migrations on this row’s database only (host / name shown in Database column)"
                       @click="toggleSchema(d.id, $event)"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;vertical-align:middle;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
@@ -310,9 +332,10 @@ function confirmDelete(domain) {
           <li><strong>Switch</strong> — activates this domain; all CMS edits are saved to its database</li>
           <li><strong>Test DB</strong> — pings the database to verify credentials are correct (green ✓ / red ✗)</li>
           <li><strong>Edit</strong> — update domain name, URL or database credentials</li>
-          <li><strong>Schema → Sync schema</strong> — runs pending migrations, safe, no data deleted</li>
-          <li><strong>Schema → Rollback last</strong> — undoes the last migration batch</li>
-          <li><strong>Schema → Fresh migrate ⚠️</strong> — drops ALL tables, recreates from scratch (data is lost!)</li>
+          <li><strong>Schema</strong> — runs only on that row’s <strong>Database</strong> (host / DB name), never on the CMS master. Hidden if the domain uses the same DB as master.</li>
+          <li><strong>Schema → Sync schema</strong> — pending migrations on that site DB only, safe, no data deleted</li>
+          <li><strong>Schema → Rollback last</strong> — undoes the last migration batch on that site DB</li>
+          <li><strong>Schema → Fresh migrate ⚠️</strong> — drops ALL tables in that site DB, recreates from scratch</li>
           <li><strong>Remove</strong> — disconnects domain from CMS, actual database is untouched</li>
         </ul>
       </div>
