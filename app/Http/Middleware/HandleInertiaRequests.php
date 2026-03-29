@@ -31,15 +31,22 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         // Load domains + active domain once per page (shared to all Inertia pages)
-        $activeDomainId = $request->session()->get('active_domain_id');
-        $activeDomain   = $activeDomainId
-            ? Domain::where('id', $activeDomainId)->first(['id', 'name', 'domain', 'frontend_url'])
-            : null;
+        // Wrapped in try/catch — domains table may not exist yet on a fresh deployment
+        $activeDomain = null;
+        $allDomains   = collect();
+        try {
+            $activeDomainId = $request->session()->get('active_domain_id');
+            $activeDomain   = $activeDomainId
+                ? Domain::where('id', $activeDomainId)->first(['id', 'name', 'domain', 'frontend_url'])
+                : null;
 
-        $allDomains = $request->user()
-            ? Domain::where('is_active', true)->orderByDesc('is_default')->orderBy('name')
-                ->get(['id', 'name', 'domain', 'frontend_url'])
-            : collect();
+            $allDomains = $request->user()
+                ? Domain::where('is_active', true)->orderByDesc('is_default')->orderBy('name')
+                    ->get(['id', 'name', 'domain', 'frontend_url'])
+                : collect();
+        } catch (\Throwable $e) {
+            // Domains table may not exist yet (migration pending) — fail gracefully
+        }
 
         return [
             ...parent::share($request),

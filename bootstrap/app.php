@@ -31,7 +31,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (NotFoundHttpException $e, Request $request) {
-            \App\Models\BrokenLinkLog::log404($request->path(), $request->header('referer'));
+            try {
+                \App\Models\BrokenLinkLog::log404($request->path(), $request->header('referer'));
+            } catch (\Throwable $ignored) {
+                // Table may not exist yet on fresh deployment
+            }
             return null;
         });
     })->create();

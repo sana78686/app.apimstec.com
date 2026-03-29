@@ -33,16 +33,20 @@ class TenantMiddleware
 
     private function resolveDomain(Request $request): ?Domain
     {
-        // 1. Admin session (web routes)
-        $domainId = session('active_domain_id');
-        if ($domainId) {
-            return Domain::where('id', $domainId)->where('is_active', true)->first();
-        }
+        try {
+            // 1. Admin session (web routes)
+            $domainId = session('active_domain_id');
+            if ($domainId) {
+                return Domain::where('id', $domainId)->where('is_active', true)->first();
+            }
 
-        // 2. X-Domain header (public API routes from React frontends)
-        $header = $request->header('X-Domain');
-        if ($header) {
-            return Domain::where('domain', $header)->where('is_active', true)->first();
+            // 2. X-Domain header (public API routes from React frontends)
+            $header = $request->header('X-Domain');
+            if ($header) {
+                return Domain::where('domain', $header)->where('is_active', true)->first();
+            }
+        } catch (\Throwable $e) {
+            // Domains table may not exist yet (migration pending) — fail gracefully
         }
 
         return null;
