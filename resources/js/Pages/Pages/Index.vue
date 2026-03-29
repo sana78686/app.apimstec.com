@@ -59,23 +59,31 @@ onMounted(async () => {
   }
 });
 
-function setPagePublishedInTree(tree, id, value) {
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft',    desc: 'Not visible on site' },
+  { value: 'visible',  label: 'Visible',  desc: 'Live on frontend'    },
+  { value: 'disabled', label: 'Disabled', desc: 'Hidden from site'    },
+];
+
+function setPageFieldInTree(tree, id, fields) {
   if (!tree || !tree.length) return false;
   for (const n of tree) {
-    if (n.id === id) {
-      n.is_published = value;
-      return true;
-    }
-    if (n.children?.length && setPagePublishedInTree(n.children, id, value)) return true;
+    if (n.id === id) { Object.assign(n, fields); return true; }
+    if (n.children?.length && setPageFieldInTree(n.children, id, fields)) return true;
   }
   return false;
 }
 
-async function togglePublish(p) {
+async function changeStatus(p, newVisibility) {
+  if (p.visibility === newVisibility) return;
+  const prev = p.visibility;
+  setPageFieldInTree(pages.value, p.id, { visibility: newVisibility });
   try {
-    const { data } = await window.axios.post(`/api/pages/${p.id}/toggle-publish`);
-    setPagePublishedInTree(pages.value, p.id, data.is_published);
+    const { data } = await window.axios.patch(`/api/pages/${p.id}/status`, { visibility: newVisibility });
+    setPageFieldInTree(pages.value, p.id, { visibility: data.visibility, is_published: data.is_published });
+    successMessage.value = data.message || 'Status updated.';
   } catch (e) {
+    setPageFieldInTree(pages.value, p.id, { visibility: prev });
     const msg = e.response?.data?.message || 'Failed to update status.';
     alert(msg);
   }
@@ -149,7 +157,7 @@ async function destroy(p) {
               <th>Slug</th>
               <th>Parent</th>
               <th>Placement</th>
-              <th>Published</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -169,15 +177,15 @@ async function destroy(p) {
                 <span v-else class="admin-text-muted">—</span>
               </td>
               <td>
-                <button
-                  type="button"
-                  class="admin-list-link admin-publish-toggle"
-                  :class="{ 'is-published': p.is_published }"
-                  :title="p.is_published ? 'Click to unpublish' : 'Click to publish'"
-                  @click="togglePublish(p)"
+                <select
+                  :value="p.visibility || 'draft'"
+                  class="admin-status-select"
+                  :class="`admin-status-select--${p.visibility || 'draft'}`"
+                  :title="`Status: ${p.visibility || 'draft'}`"
+                  @change="changeStatus(p, $event.target.value)"
                 >
-                  {{ p.is_published ? 'Published' : 'Unpublished' }}
-                </button>
+                  <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+                </select>
               </td>
               <td>
                 <Link :href="route('pages.edit', p.id)" class="admin-list-link">Edit</Link>

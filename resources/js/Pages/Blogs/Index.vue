@@ -55,38 +55,24 @@ async function destroy(b) {
   }
 }
 
-async function togglePublish(b) {
-  try {
-    const { data } = await window.axios.post(`/api/blogs/${b.id}/toggle-publish`);
-    const idx = blogs.value.findIndex((x) => x.id === b.id);
-    if (idx !== -1) {
-      blogs.value[idx].is_published = data.is_published;
-      if (data.visibility != null) blogs.value[idx].visibility = data.visibility;
-    }
-    successMessage.value = data.message || (data.is_published ? 'Blog published.' : 'Blog unpublished.');
-  } catch (e) {
-    const msg = e.response?.data?.message || 'Failed to update.';
-    alert(msg);
-  }
-}
-
-const visibilityOptions = [
-  { value: 'published', label: 'Published' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'private', label: 'Private' },
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft'    },
+  { value: 'visible',  label: 'Visible'  },
+  { value: 'disabled', label: 'Disabled' },
 ];
 
-async function changeVisibility(b, newVisibility) {
+async function changeStatus(b, newVisibility) {
+  if (b.visibility === newVisibility) return;
   const prev = b.visibility;
   b.visibility = newVisibility;
   try {
-    const { data } = await window.axios.patch(`/api/blogs/${b.id}/visibility`, { visibility: newVisibility });
-    b.visibility = data.visibility;
+    const { data } = await window.axios.patch(`/api/blogs/${b.id}/status`, { visibility: newVisibility });
+    b.visibility   = data.visibility;
     b.is_published = data.is_published;
-    successMessage.value = data.message || 'Visibility updated.';
+    successMessage.value = data.message || 'Status updated.';
   } catch (e) {
     b.visibility = prev;
-    const msg = e.response?.data?.message || 'Failed to update visibility.';
+    const msg = e.response?.data?.message || 'Failed to update status.';
     alert(msg);
   }
 }
@@ -141,9 +127,8 @@ async function changeVisibility(b, newVisibility) {
               <th>Title</th>
               <th>Slug</th>
               <th>Author</th>
-              <th>Published</th>
+              <th>Published at</th>
               <th>Status</th>
-              <th>Visibility</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -154,25 +139,14 @@ async function changeVisibility(b, newVisibility) {
               <td>{{ b.author?.name ?? '—' }}</td>
               <td>{{ b.published_at ? new Date(b.published_at).toLocaleDateString() : '—' }}</td>
               <td>
-                <button
-                  type="button"
-                  class="admin-list-link admin-publish-toggle"
-                  :class="{ 'is-published': b.is_published }"
-                  :title="b.is_published ? 'Click to unpublish' : 'Click to publish'"
-                  @click="togglePublish(b)"
-                >
-                  {{ b.is_published ? 'Published' : 'Unpublished' }}
-                </button>
-              </td>
-              <td>
                 <select
                   :value="b.visibility || 'draft'"
-                  class="form-select form-select-sm"
-                  style="max-width: 7rem;"
-                  aria-label="Visibility"
-                  @change="changeVisibility(b, $event.target.value)"
+                  class="admin-status-select"
+                  :class="`admin-status-select--${b.visibility || 'draft'}`"
+                  :title="`Status: ${b.visibility || 'draft'}`"
+                  @change="changeStatus(b, $event.target.value)"
                 >
-                  <option v-for="opt in visibilityOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
                 </select>
               </td>
               <td>

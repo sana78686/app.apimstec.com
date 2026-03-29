@@ -23,10 +23,10 @@ class IndexingController extends Controller
             'title' => $p->title,
             'slug' => $p->slug,
             'type' => 'page',
-            'visibility' => $p->visibility ?? Page::VISIBILITY_PUBLISHED,
+            'visibility' => $p->visibility ?? Page::VISIBILITY_DRAFT,
             'is_published' => $p->is_published,
             'meta_robots' => $p->meta_robots,
-            'indexing_summary' => $this->summaryFor($p->visibility ?? Page::VISIBILITY_PUBLISHED),
+            'indexing_summary' => $this->summaryFor($p->visibility ?? Page::VISIBILITY_DRAFT),
         ]);
 
         $blogs = Blog::orderBy('title')->get(['id', 'title', 'slug', 'visibility', 'is_published'])->map(fn ($b) => [
@@ -45,9 +45,9 @@ class IndexingController extends Controller
         return Inertia::render('Seo/Indexing/Index', [
             'items' => $items,
             'visibilityOptions' => [
-                'draft' => 'Draft (noindex)',
-                'private' => 'Private (hidden)',
-                'published' => 'Published (index allowed)',
+                'draft'    => 'Draft',
+                'visible'  => 'Visible',
+                'disabled' => 'Disabled',
             ],
         ]);
     }
@@ -60,7 +60,7 @@ class IndexingController extends Controller
         $request->validate([
             'type' => ['required', 'string', Rule::in(['page', 'blog'])],
             'id' => ['required', 'integer', 'min:1'],
-            'visibility' => ['required', 'string', Rule::in(['draft', 'private', 'published'])],
+            'visibility' => ['required', 'string', Rule::in(['draft', 'visible', 'disabled'])],
         ]);
 
         $type = $request->input('type');
@@ -69,22 +69,22 @@ class IndexingController extends Controller
 
         if ($type === 'page') {
             $page = Page::findOrFail($id);
-            $page->visibility = $visibility;
-            $page->meta_robots = $page->metaRobotsForVisibility();
-            $page->is_published = ($visibility === Page::VISIBILITY_PUBLISHED);
+            $page->visibility   = $visibility;
+            $page->meta_robots  = $page->metaRobotsForVisibility();
+            $page->is_published = ($visibility === Page::VISIBILITY_VISIBLE);
             $page->save();
             return response()->json([
-                'message' => 'Visibility updated.',
-                'visibility' => $page->visibility,
-                'meta_robots' => $page->meta_robots,
-                'is_published' => $page->is_published,
+                'message'          => 'Status updated.',
+                'visibility'       => $page->visibility,
+                'meta_robots'      => $page->meta_robots,
+                'is_published'     => $page->is_published,
                 'indexing_summary' => $this->summaryFor($page->visibility),
             ]);
         }
 
         $blog = Blog::findOrFail($id);
-        $blog->visibility = $visibility;
-        $blog->is_published = ($visibility === Blog::VISIBILITY_PUBLISHED);
+        $blog->visibility   = $visibility;
+        $blog->is_published = ($visibility === Blog::VISIBILITY_VISIBLE);
         $blog->save();
         return response()->json([
             'message' => 'Visibility updated.',
@@ -98,10 +98,9 @@ class IndexingController extends Controller
     private function summaryFor(string $visibility): string
     {
         return match ($visibility) {
-            'draft' => 'noindex',
-            'private' => 'hidden',
-            'published' => 'index allowed',
-            default => 'index allowed',
+            'visible'  => 'visible & indexed',
+            'disabled' => 'disabled',
+            default    => 'draft (noindex)',
         };
     }
 }

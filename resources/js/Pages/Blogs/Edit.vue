@@ -15,13 +15,19 @@ const props = defineProps({
 const loading = ref(true);
 const processing = ref(false);
 const loadError = ref('');
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft — not visible on site'     },
+  { value: 'visible',  label: 'Visible — live on frontend'      },
+  { value: 'disabled', label: 'Disabled — hidden from frontend' },
+];
+
 const form = reactive({
   title: '',
   slug: '',
   excerpt: '',
   content: '',
   published_at: '',
-  is_published: false,
+  visibility: 'draft',
   meta_title: '',
   meta_description: '',
   canonical_url: '',
@@ -57,8 +63,8 @@ onMounted(async () => {
     form.excerpt = props.blog.excerpt ?? '';
     form.content = props.blog.content ?? '';
     form.published_at = toDatetimeLocal(props.blog.published_at);
-    form.is_published = !!props.blog.is_published;
-    form.meta_title = props.blog.meta_title ?? '';
+    form.visibility   = props.blog.visibility ?? 'draft';
+    form.meta_title   = props.blog.meta_title ?? '';
     form.meta_description = props.blog.meta_description ?? '';
     form.canonical_url = props.blog.canonical_url ?? '';
     form.meta_robots = props.blog.meta_robots ?? 'index,follow';
@@ -76,8 +82,8 @@ onMounted(async () => {
     form.excerpt = b.excerpt ?? '';
     form.content = b.content ?? '';
     form.published_at = toDatetimeLocal(b.published_at);
-    form.is_published = !!b.is_published;
-    form.meta_title = b.meta_title ?? '';
+    form.visibility   = b.visibility ?? 'draft';
+    form.meta_title   = b.meta_title ?? '';
     form.meta_description = b.meta_description ?? '';
     form.canonical_url = b.canonical_url ?? '';
     form.meta_robots = b.meta_robots ?? 'index,follow';
@@ -167,11 +173,11 @@ async function submit() {
                 <LabelWithTooltip for="published_at" value="Published at" optional />
                 <TextInput id="published_at" v-model="form.published_at" type="datetime-local" class="form-control form-control-sm" />
               </div>
-              <div class="col-md-6 d-flex align-items-end">
-                <div class="form-check">
-                  <input id="is_published" v-model="form.is_published" type="checkbox" class="form-check-input" />
-                  <label for="is_published" class="form-check-label small">Published</label>
-                </div>
+              <div class="col-md-6">
+                <LabelWithTooltip for="visibility" value="Status" tip="Draft = not shown. Visible = live on site. Disabled = hidden." />
+                <select id="visibility" v-model="form.visibility" class="form-select form-select-sm">
+                  <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+                </select>
               </div>
             </div>
 

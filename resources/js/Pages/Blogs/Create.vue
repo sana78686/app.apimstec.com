@@ -8,6 +8,12 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { reactive, ref } from 'vue';
 
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft — not visible on site'     },
+  { value: 'visible',  label: 'Visible — live on frontend'      },
+  { value: 'disabled', label: 'Disabled — hidden from frontend' },
+];
+
 const processing = ref(false);
 const form = reactive({
   title: '',
@@ -15,7 +21,7 @@ const form = reactive({
   excerpt: '',
   content: '',
   published_at: '',
-  is_published: false,
+  visibility: 'draft',
   meta_title: '',
   meta_description: '',
   canonical_url: '',
@@ -99,11 +105,11 @@ async function submit() {
               <LabelWithTooltip for="published_at" value="Published at" optional />
               <TextInput id="published_at" v-model="form.published_at" type="datetime-local" class="form-control form-control-sm" />
             </div>
-            <div class="col-md-6 d-flex align-items-end">
-              <div class="form-check">
-                <input id="is_published" v-model="form.is_published" type="checkbox" class="form-check-input" />
-                <label for="is_published" class="form-check-label small">Published</label>
-              </div>
+            <div class="col-md-6">
+              <LabelWithTooltip for="visibility" value="Status" tip="Draft = not shown. Visible = live on site. Disabled = hidden." />
+              <select id="visibility" v-model="form.visibility" class="form-select form-select-sm">
+                <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+              </select>
             </div>
           </div>
 

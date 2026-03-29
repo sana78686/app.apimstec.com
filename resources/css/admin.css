@@ -936,6 +936,36 @@
   color: #b91c1c;
 }
 
+/* ── Status dropdown (replaces old publish toggle) ── */
+.admin-status-select {
+  appearance: auto;
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .2rem .5rem;
+  border-radius: 6px;
+  border: 1px solid var(--admin-card-border, #eaeaef);
+  background: var(--admin-main-bg, #f6f6f9);
+  color: var(--admin-text, #32324d);
+  cursor: pointer;
+  max-width: 120px;
+}
+.admin-status-select--visible {
+  background: #e8f9ee;
+  border-color: #27ae60;
+  color: #1a7a42;
+}
+.admin-status-select--draft {
+  background: #f4f4fb;
+  border-color: #c5c3ff;
+  color: #4945ff;
+}
+.admin-status-select--disabled {
+  background: #fff5e5;
+  border-color: #e67e22;
+  color: #a04000;
+}
+
+/* keep old class in case any template still uses it */
 .admin-publish-toggle {
   font-weight: 500;
   padding: 0.2rem 0.5rem;
@@ -944,18 +974,9 @@
   background: var(--admin-main-bg, #f6f6f9);
   color: var(--admin-text-muted, #666687);
 }
-.admin-publish-toggle:hover {
-  background: #eaeaef;
-  color: var(--admin-text, #32324d);
-}
 .admin-publish-toggle.is-published {
   background: var(--admin-primary, #181826);
   border-color: var(--admin-primary, #181826);
-  color: #fff;
-}
-.admin-publish-toggle.is-published:hover {
-  background: var(--admin-primary-hover, #0d0d14);
-  border-color: var(--admin-primary-hover, #0d0d14);
   color: #fff;
 }
 

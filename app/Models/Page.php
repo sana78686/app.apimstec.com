@@ -29,27 +29,33 @@ class Page extends Model
         'sort_order',
     ];
 
-    public const VISIBILITY_DRAFT = 'draft';
-    public const VISIBILITY_PRIVATE = 'private';
-    public const VISIBILITY_PUBLISHED = 'published';
+    public const VISIBILITY_DRAFT    = 'draft';
+    public const VISIBILITY_VISIBLE  = 'visible';
+    public const VISIBILITY_DISABLED = 'disabled';
 
     public static function visibilityOptions(): array
     {
         return [
-            self::VISIBILITY_DRAFT => 'Draft (noindex)',
-            self::VISIBILITY_PRIVATE => 'Private (hidden)',
-            self::VISIBILITY_PUBLISHED => 'Published (index allowed)',
+            self::VISIBILITY_DRAFT    => 'Draft',
+            self::VISIBILITY_VISIBLE  => 'Visible',
+            self::VISIBILITY_DISABLED => 'Disabled',
         ];
     }
 
     /** Meta robots value for current visibility. */
     public function metaRobotsForVisibility(): string
     {
-        return match ($this->visibility ?? self::VISIBILITY_PUBLISHED) {
-            self::VISIBILITY_DRAFT => 'noindex,follow',
-            self::VISIBILITY_PRIVATE => 'noindex,nofollow',
-            default => 'index,follow',
+        return match ($this->visibility ?? self::VISIBILITY_DRAFT) {
+            self::VISIBILITY_VISIBLE  => 'index,follow',
+            self::VISIBILITY_DISABLED => 'noindex,nofollow',
+            default                   => 'noindex,follow', // draft
         };
+    }
+
+    /** True only when status is 'visible'. */
+    public function isVisible(): bool
+    {
+        return $this->visibility === self::VISIBILITY_VISIBLE;
     }
 
     protected function casts(): array

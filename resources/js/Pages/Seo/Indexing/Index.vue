@@ -55,9 +55,9 @@ function isSaving(item) {
 }
 
 function summaryBadgeClass(summary) {
-  if (summary === 'index allowed') return 'admin-list-badge admin-list-badge-success';
-  if (summary === 'hidden') return 'admin-list-badge admin-list-badge-warning';
-  return 'admin-list-badge'; // noindex
+  if (summary === 'visible & indexed') return 'admin-list-badge admin-list-badge-success';
+  if (summary === 'disabled')          return 'admin-list-badge admin-list-badge-warning';
+  return 'admin-list-badge'; // draft (noindex)
 }
 </script>
 
@@ -98,7 +98,7 @@ function summaryBadgeClass(summary) {
 
       <div class="admin-box admin-box-smooth mb-4">
         <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Content visibility & indexing</h2>
-        <p class="text-muted small mb-3">Set visibility per page or blog. Draft = noindex; Private = hidden (noindex, not in sitemap); Published = index allowed and visible.</p>
+          <p class="text-muted small mb-3">Set the status per page or blog. <strong>Draft</strong> = noindex (working copy); <strong>Visible</strong> = live on frontend, indexed; <strong>Disabled</strong> = hidden from frontend, noindex.</p>
         <div class="admin-list-table-wrap">
           <table class="admin-list-table" role="grid">
             <thead>

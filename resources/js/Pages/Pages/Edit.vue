@@ -18,6 +18,12 @@ const parents = ref(props.parents || []);
 const loading = ref(true);
 const processing = ref(false);
 const loadError = ref('');
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft — not visible on site'     },
+  { value: 'visible',  label: 'Visible — live on frontend'      },
+  { value: 'disabled', label: 'Disabled — hidden from frontend' },
+];
+
 const form = reactive({
   title: '',
   slug: '',
@@ -26,7 +32,7 @@ const form = reactive({
   meta_description: '',
   placement: '',
   parent_id: '',
-  is_published: true,
+  visibility: 'draft',
   sort_order: 0,
 });
 const errors = reactive({});
@@ -41,7 +47,7 @@ onMounted(async () => {
     form.meta_description = props.page.meta_description ?? '';
     form.placement = props.page.placement ?? '';
     form.parent_id = props.page.parent_id ?? '';
-    form.is_published = !!props.page.is_published;
+    form.visibility = props.page.visibility ?? 'draft';
     form.sort_order = props.page.sort_order ?? 0;
     loading.value = false;
     return;
@@ -56,7 +62,7 @@ onMounted(async () => {
     form.meta_description = p.meta_description ?? '';
     form.placement = p.placement ?? '';
     form.parent_id = p.parent_id ?? '';
-    form.is_published = !!p.is_published;
+    form.visibility = p.visibility ?? 'draft';
     form.sort_order = p.sort_order ?? 0;
     parents.value = data.parents ?? [];
   } catch (e) {
@@ -167,10 +173,10 @@ async function submit() {
               </div>
             </div>
             <div class="mb-3">
-              <div class="form-check">
-                <input id="is_published" v-model="form.is_published" type="checkbox" class="form-check-input" />
-                <label for="is_published" class="form-check-label small">Published</label>
-              </div>
+              <LabelWithTooltip for="visibility" value="Status" tip="Draft = not shown. Visible = live on site. Disabled = hidden." />
+              <select id="visibility" v-model="form.visibility" class="form-select form-select-sm" style="max-width:260px;">
+                <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+              </select>
             </div>
             <InputError v-if="errors.form" :message="errors.form" />
             <div class="d-flex gap-2">

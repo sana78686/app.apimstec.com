@@ -30,6 +30,7 @@ class PageController extends Controller
             'og_description' => $page->og_description,
             'og_image' => $page->og_image,
             'placement' => $page->placement,
+            'visibility' => $page->visibility ?? Page::VISIBILITY_DRAFT,
             'is_published' => $page->is_published,
             'sort_order' => $page->sort_order,
             'children' => $page->relationLoaded('children') ? $page->children->map(fn ($c) => $this->pageToArray($c))->values()->all() : [],
@@ -70,10 +71,11 @@ class PageController extends Controller
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
             'parent_id' => 'nullable|exists:pages,id',
-            'is_published' => 'boolean',
+            'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
+        $visibility = $request->input('visibility', Page::VISIBILITY_DRAFT);
         $page = Page::create([
             'title' => $request->title,
             'slug' => $request->slug ?: Str::slug($request->title),
@@ -82,7 +84,8 @@ class PageController extends Controller
             'meta_description' => $request->meta_description,
             'placement' => $request->placement,
             'parent_id' => $request->parent_id ?: null,
-            'is_published' => $request->boolean('is_published', false),
+            'visibility' => $visibility,
+            'is_published' => ($visibility === Page::VISIBILITY_VISIBLE),
             'sort_order' => (int) ($request->sort_order ?? 0),
         ]);
 
@@ -117,7 +120,7 @@ class PageController extends Controller
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
             'parent_id' => 'nullable|exists:pages,id',
-            'is_published' => 'boolean',
+            'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
@@ -126,6 +129,7 @@ class PageController extends Controller
             $parentId = null;
         }
 
+        $visibility = $request->input('visibility', $page->visibility ?? Page::VISIBILITY_DRAFT);
         $page->update([
             'title' => $request->title,
             'slug' => $request->slug,
@@ -134,7 +138,8 @@ class PageController extends Controller
             'meta_description' => $request->meta_description,
             'placement' => $request->placement,
             'parent_id' => $parentId ?: null,
-            'is_published' => $request->boolean('is_published', false),
+            'visibility' => $visibility,
+            'is_published' => ($visibility === Page::VISIBILITY_VISIBLE),
             'sort_order' => (int) ($request->sort_order ?? 0),
         ]);
 
@@ -159,15 +164,35 @@ class PageController extends Controller
         return redirect()->route('pages.index')->with('success', 'deleted');
     }
 
-    public function togglePublish(Page $page): JsonResponse
+    /** Quick status update from the pages list (PATCH /api/pages/{id}/status). */
+    public function updateStatus(Request $request, Page $page): JsonResponse
     {
-        $page->is_published = !$page->is_published;
-        $page->visibility = $page->is_published ? Page::VISIBILITY_PUBLISHED : Page::VISIBILITY_DRAFT;
-        $page->meta_robots = $page->metaRobotsForVisibility();
+        $request->validate([
+            'visibility' => ['required', 'string', Rule::in(['draft', 'visible', 'disabled'])],
+        ]);
+        $page->visibility   = $request->visibility;
+        $page->is_published = ($page->visibility === Page::VISIBILITY_VISIBLE);
+        $page->meta_robots  = $page->metaRobotsForVisibility();
         $page->save();
         return response()->json([
+            'visibility'   => $page->visibility,
             'is_published' => $page->is_published,
-            'message' => $page->is_published ? 'Page published.' : 'Page unpublished.',
+            'meta_robots'  => $page->meta_robots,
+            'message'      => 'Status updated.',
+        ]);
+    }
+
+    /** @deprecated Keep for backward compat; redirects to updateStatus. */
+    public function togglePublish(Page $page): JsonResponse
+    {
+        $page->visibility   = $page->visibility === Page::VISIBILITY_VISIBLE ? Page::VISIBILITY_DRAFT : Page::VISIBILITY_VISIBLE;
+        $page->is_published = ($page->visibility === Page::VISIBILITY_VISIBLE);
+        $page->meta_robots  = $page->metaRobotsForVisibility();
+        $page->save();
+        return response()->json([
+            'visibility'   => $page->visibility,
+            'is_published' => $page->is_published,
+            'message'      => 'Status updated.',
         ]);
     }
 

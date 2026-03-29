@@ -11,6 +11,12 @@ import { onMounted, reactive, ref } from 'vue';
 const parents = ref([]);
 const loading = ref(true);
 const processing = ref(false);
+const STATUS_OPTIONS = [
+  { value: 'draft',    label: 'Draft — not visible on site'     },
+  { value: 'visible',  label: 'Visible — live on frontend'      },
+  { value: 'disabled', label: 'Disabled — hidden from frontend' },
+];
+
 const form = reactive({
   title: '',
   slug: '',
@@ -19,7 +25,7 @@ const form = reactive({
   meta_description: '',
   placement: '',
   parent_id: '',
-  is_published: false,
+  visibility: 'draft',
   sort_order: 0,
 });
 const errors = reactive({});
@@ -130,10 +136,10 @@ async function submit() {
               </div>
             </div>
             <div class="mb-3">
-              <div class="form-check">
-                <input id="is_published" v-model="form.is_published" type="checkbox" class="form-check-input" />
-                <label for="is_published" class="form-check-label small">Published</label>
-              </div>
+              <LabelWithTooltip for="visibility" value="Status" tip="Draft = not shown. Visible = live on site. Disabled = hidden." />
+              <select id="visibility" v-model="form.visibility" class="form-select form-select-sm" style="max-width:260px;">
+                <option v-for="s in STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+              </select>
             </div>
             <InputError v-if="errors.form" :message="errors.form" />
             <div class="d-flex gap-2">

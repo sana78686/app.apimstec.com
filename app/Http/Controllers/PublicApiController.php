@@ -80,7 +80,7 @@ class PublicApiController extends Controller
     public function pages(Request $request): JsonResponse
     {
         $pages = Page::where('is_published', true)
-            ->where('visibility', Page::VISIBILITY_PUBLISHED)
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->orderByRaw('parent_id IS NULL DESC')
             ->orderBy('sort_order')
             ->orderBy('title')
@@ -107,7 +107,7 @@ class PublicApiController extends Controller
     {
         $page = Page::where('slug', $slug)
             ->where('is_published', true)
-            ->where('visibility', Page::VISIBILITY_PUBLISHED)
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->first();
 
         if (! $page) {
@@ -137,7 +137,7 @@ class PublicApiController extends Controller
     public function blogs(Request $request): JsonResponse
     {
         $blogs = Blog::where('is_published', true)
-            ->where('visibility', Blog::VISIBILITY_PUBLISHED)
+            ->where('visibility', Blog::VISIBILITY_VISIBLE)
             ->orderBy('published_at', 'desc')
             ->orderBy('title')
             ->get(['id', 'title', 'slug', 'excerpt', 'published_at', 'og_title', 'og_description', 'og_image'])
@@ -161,7 +161,7 @@ class PublicApiController extends Controller
     {
         $blog = Blog::where('slug', $slug)
             ->where('is_published', true)
-            ->where('visibility', Blog::VISIBILITY_PUBLISHED)
+            ->where('visibility', Blog::VISIBILITY_VISIBLE)
             ->first();
 
         if (! $blog) {
