@@ -1,0 +1,44 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "dev:all": "concurrently \"php artisan serve\" \"npm run dev\"",
+        "serve": "php artisan serve"
+    },
+    "devDependencies": {
+        "@inertiajs/vue3": "^2.0.0",
+        "@tailwindcss/forms": "^0.5.3",
+        "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^6.0.0",
+        "autoprefixer": "^10.4.12",
+        "axios": "^1.11.0",
+        "concurrently": "^9.0.1",
+        "laravel-vite-plugin": "^2.0.0",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.2.1",
+        "vite": "^7.0.7",
+        "vue": "^3.4.0"
+    },
+    "dependencies": {
+        "@tiptap/extension-highlight": "^3.20.0",
+        "@tiptap/extension-image": "^3.20.0",
+        "@tiptap/extension-link": "^3.20.0",
+        "@tiptap/extension-placeholder": "^3.20.0",
+        "@tiptap/extension-strike": "^3.20.0",
+        "@tiptap/extension-table": "^3.20.0",
+        "@tiptap/extension-table-cell": "^3.20.0",
+        "@tiptap/extension-table-header": "^3.20.0",
+        "@tiptap/extension-table-row": "^3.20.0",
+        "@tiptap/extension-task-item": "^3.20.0",
+        "@tiptap/extension-task-list": "^3.20.0",
+        "@tiptap/extension-text-align": "^3.20.0",
+        "@tiptap/extension-underline": "^3.20.0",
+        "@tiptap/starter-kit": "^3.20.0",
+        "@tiptap/vue-3": "^3.20.0",
+        "bootstrap": "^5.3.8",
+        "sweetalert2": "^11.26.22"
+    }
+}

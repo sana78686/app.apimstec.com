@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class HomeCard extends Model
+{
+    protected $fillable = ['title', 'description', 'icon', 'sort_order'];
+
+    protected $casts = [
+        'sort_order' => 'integer',
+    ];
+
+    public static function ordered(): \Illuminate\Database\Eloquent\Builder
+    {
+        return static::orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Icon keys and labels for "Why use our PDF compressor" cards. Frontend maps keys to emoji/SVG. */
+    public static function iconOptions(): array
+    {
+        return [
+            'lightning' => 'Fast compression',
+            'quality' => 'Quality control',
+            'lock' => 'Privacy first',
+            'star' => 'Free to use',
+            'document' => 'Document',
+            'shield' => 'Security / Shield',
+            'heart' => 'Favourite / Heart',
+            'cloud' => 'Cloud',
+            'download' => 'Download',
+            'upload' => 'Upload',
+            'check' => 'Check / Done',
+            'image' => 'Image',
+            'file-plus' => 'Add file',
+            'layers' => 'Layers',
+            'sparkle' => 'Sparkle',
+            'zap' => 'Zap / Speed',
+            'settings' => 'Settings',
+            'globe' => 'Globe / Worldwide',
+            'mobile' => 'Mobile friendly',
+            'clock' => 'Fast / Time',
+        ];
+    }
+}
