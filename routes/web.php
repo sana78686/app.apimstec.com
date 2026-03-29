@@ -19,6 +19,7 @@ use App\Http\Controllers\Seo\BrokenLinksController;
 use App\Http\Controllers\Seo\ContentOptimizationController;
 use App\Http\Controllers\Seo\PerformanceController;
 use App\Http\Controllers\Seo\UrlRedirectsController;
+use App\Http\Controllers\DomainController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SitemapController;
@@ -35,8 +36,25 @@ Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots');
 
 Route::get('/dashboard', function () {
+    // Redirect to domain picker if domains exist and none is selected yet
+    if (!session('active_domain_id') && \App\Models\Domain::where('is_active', true)->exists()) {
+        return redirect()->route('domains.select');
+    }
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Domain management + session switcher (admin only)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/domains/select', [DomainController::class, 'select'])->name('domains.select');
+    Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
+    Route::get('/domains/create', [DomainController::class, 'create'])->name('domains.create');
+    Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
+    Route::get('/domains/{domain}/edit', [DomainController::class, 'edit'])->name('domains.edit');
+    Route::put('/domains/{domain}', [DomainController::class, 'update'])->name('domains.update');
+    Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])->name('domains.destroy');
+    Route::post('/domains/switch', [DomainController::class, 'switchDomain'])->name('domains.switch');
+    Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])->name('domains.sync-schema');
+});
 
 Route::middleware(['auth', 'verified'])->prefix('credentials')->name('credentials.')->group(function () {
     Route::get('/', [CredentialController::class, 'index'])->name('index');

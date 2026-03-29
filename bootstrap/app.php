@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // TenantMiddleware runs on every request (web + api) to switch the
+        // `tenant` DB connection based on active domain session or X-Domain header.
+        $middleware->prepend(\App\Http\Middleware\TenantMiddleware::class);
+
         $middleware->web(append: [
             \App\Http\Middleware\ApplyRedirects::class,
             \App\Http\Middleware\HandleInertiaRequests::class,

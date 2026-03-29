@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Domain;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,11 +30,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Load domains + active domain once per page (shared to all Inertia pages)
+        $activeDomainId = $request->session()->get('active_domain_id');
+        $activeDomain   = $activeDomainId
+            ? Domain::where('id', $activeDomainId)->first(['id', 'name', 'domain', 'frontend_url'])
+            : null;
+
+        $allDomains = $request->user()
+            ? Domain::where('is_active', true)->orderByDesc('is_default')->orderBy('name')
+                ->get(['id', 'name', 'domain', 'frontend_url'])
+            : collect();
+
         return [
             ...parent::share($request),
             'flash' => [
                 'success' => $request->session()->get('success'),
             ],
+            'domains'       => $allDomains,
+            'activeDomain'  => $activeDomain,
             'auth' => [
                 'user' => $request->user() ? [
                     'id' => $request->user()->id,

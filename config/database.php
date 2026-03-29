@@ -63,6 +63,25 @@ return [
             ]) : [],
         ],
 
+        /*
+         * Tenant connection — dynamically overridden per-request by TenantMiddleware
+         * based on the active domain (admin session or X-Domain API header).
+         * Defaults to the master DB so the CMS works without domain selection.
+         */
+        'tenant' => [
+            'driver'    => 'mysql',
+            'host'      => env('DB_HOST', '127.0.0.1'),
+            'port'      => env('DB_PORT', '3306'),
+            'database'  => env('DB_DATABASE', 'laravel'),
+            'username'  => env('DB_USERNAME', 'root'),
+            'password'  => env('DB_PASSWORD', ''),
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => true,
+            'engine'    => null,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

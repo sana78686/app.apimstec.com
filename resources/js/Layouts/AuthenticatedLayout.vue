@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../../css/admin.css';
@@ -10,7 +10,16 @@ const userDropdownOpen = ref(false);
 const userDropdownEl = ref(null);
 
 const page = usePage();
-const user = computed(() => page.props.auth?.user ?? {});
+const user          = computed(() => page.props.auth?.user ?? {});
+const domains       = computed(() => page.props.domains ?? []);
+const activeDomain  = computed(() => page.props.activeDomain ?? null);
+const domainDropOpen = ref(false);
+const domainDropEl   = ref(null);
+
+function switchDomain(id) {
+  domainDropOpen.value = false;
+  router.post(route('domains.switch'), { domain_id: id ?? null }, { preserveScroll: true });
+}
 
 /** Which nav panel to show: driven by current route. Home = dashboard only, Lock = credentials, Pencil = content only, SEO = seo.*, Gear = account (profile, users, roles). */
 const activeNavSection = computed(() => {
@@ -19,7 +28,7 @@ const activeNavSection = computed(() => {
   if (name.startsWith('credentials')) return 'credentials';
   if (name.startsWith('content-manager') || name.startsWith('pages.') || name.startsWith('blogs.')) return 'content';
   if (name.startsWith('seo.')) return 'seo';
-  if (name.startsWith('profile') || name.startsWith('users.') || name.startsWith('roles.')) return 'account';
+  if (name.startsWith('profile') || name.startsWith('users.') || name.startsWith('roles.') || name.startsWith('domains')) return 'account';
   if (name.startsWith('media')) return 'media';
   return 'dashboard';
 });
@@ -103,6 +112,9 @@ function onDocumentClick(e) {
   if (userDropdownOpen.value && userDropdownEl.value && !userDropdownEl.value.contains(e.target)) {
     closeUserDropdown();
   }
+  if (domainDropOpen.value && domainDropEl.value && !domainDropEl.value.contains(e.target)) {
+    domainDropOpen.value = false;
+  }
 }
 
 onMounted(() => document.addEventListener('click', onDocumentClick));
@@ -184,6 +196,19 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
           </svg>
         </Link>
         <Link
+          :href="route('domains.index')"
+          class="admin-icon-sidebar-item"
+          :class="{ 'is-active': activeNavSection === 'account' && (route().current() || '').startsWith('domains') }"
+          title="Domains — switch website"
+          @click="closeSidebar"
+        >
+          <!-- Globe icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </Link>
+        <Link
           :href="route('profile.edit')"
           class="admin-icon-sidebar-item"
           :class="{ 'is-active': activeNavSection === 'account' }"
@@ -211,8 +236,17 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
     <!-- Wider secondary sidebar: logo at top (all modules) + nav -->
     <aside class="admin-nav-sidebar" :class="{ 'is-open': sidebarOpen }">
       <div class="admin-nav-sidebar-head">
-        <Link :href="route('dashboard')" class="admin-nav-sidebar-logo" aria-label="compressedPDF Home">
-          <img src="/logos/compresspdf.png" alt="compressedPDF" class="admin-nav-sidebar-logo-img" />
+        <Link :href="route('dashboard')" class="admin-nav-sidebar-logo" aria-label="Go to dashboard">
+          <!-- Show active domain name instead of logo when a domain is selected -->
+          <template v-if="activeDomain">
+            <span class="admin-nav-domain-pill">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span class="admin-nav-domain-pill-name">{{ activeDomain.name }}</span>
+            </span>
+          </template>
+          <template v-else>
+            <img src="/logos/compresspdf.png" alt="compressedPDF" class="admin-nav-sidebar-logo-img" />
+          </template>
         </Link>
       </div>
       <nav class="admin-nav-sidebar-nav">
@@ -333,7 +367,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
             Blogs
           </Link>
         </template>
-        <!-- Gear icon: Account (Profile, Users, Roles) -->
+        <!-- Gear icon: Account (Profile, Users, Roles, Domains) -->
         <template v-else-if="activeNavSection === 'account'">
           <Link
             :href="route('profile.edit')"
@@ -360,6 +394,14 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
             @click="closeSidebar"
           >
             Roles
+          </Link>
+          <Link
+            :href="route('domains.index')"
+            class="admin-nav-sidebar-link"
+            :class="{ 'is-active': (route().current() || '').startsWith('domains') }"
+            @click="closeSidebar"
+          >
+            🌐 Domains
           </Link>
         </template>
         <!-- Media icon: Media library only -->
@@ -413,13 +455,70 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <Link :href="route('dashboard')" class="admin-header-logo" aria-label="compressedPDF Home">
-            <img src="/logos/compresspdf.png" alt="compressedPDF" class="admin-header-logo-img" />
+          <!-- Mobile: show domain name when active, otherwise logo -->
+          <Link :href="route('dashboard')" class="admin-header-logo" aria-label="Go to dashboard">
+            <template v-if="activeDomain">
+              <span class="admin-nav-domain-pill admin-nav-domain-pill--sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span class="admin-nav-domain-pill-name">{{ activeDomain.name }}</span>
+              </span>
+            </template>
+            <template v-else>
+              <img src="/logos/compresspdf.png" alt="compressedPDF" class="admin-header-logo-img" />
+            </template>
           </Link>
           <span class="admin-header-section-title">{{ sectionTitle }}</span>
         </div>
 
         <div class="admin-header-right">
+
+          <!-- Domain switcher pill -->
+          <div v-if="domains.length" class="admin-domain-menu" ref="domainDropEl" style="position:relative;margin-right:.75rem;">
+            <button
+              type="button"
+              class="admin-domain-btn"
+              @click="domainDropOpen = !domainDropOpen"
+              style="display:flex;align-items:center;gap:.4rem;padding:.3rem .75rem;border-radius:20px;border:1px solid var(--admin-card-border,#eaeaef);background:var(--admin-card-bg,#fff);font-size:.8125rem;cursor:pointer;white-space:nowrap;"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>{{ activeDomain ? activeDomain.name : 'Master DB' }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div
+              v-show="domainDropOpen"
+              style="position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:#fff;border:1px solid var(--admin-card-border,#eaeaef);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:1000;overflow:hidden;"
+            >
+              <button
+                type="button"
+                style="display:block;width:100%;text-align:left;padding:.5rem .9rem;font-size:.8125rem;border:none;background:none;cursor:pointer;"
+                :style="!activeDomain ? 'font-weight:600;color:var(--admin-primary,#4945ff)' : ''"
+                @click="switchDomain(null)"
+              >
+                Master DB
+              </button>
+              <hr style="margin:0;" />
+              <button
+                v-for="d in domains"
+                :key="d.id"
+                type="button"
+                style="display:block;width:100%;text-align:left;padding:.5rem .9rem;font-size:.8125rem;border:none;background:none;cursor:pointer;"
+                :style="activeDomain?.id === d.id ? 'font-weight:600;color:var(--admin-primary,#4945ff)' : ''"
+                @click="switchDomain(d.id)"
+              >
+                {{ d.name }}
+                <span style="font-size:.7rem;color:#888;margin-left:.3rem;">{{ d.domain }}</span>
+              </button>
+              <hr style="margin:0;" />
+              <Link
+                :href="route('domains.index')"
+                style="display:block;padding:.5rem .9rem;font-size:.8125rem;color:var(--admin-primary,#4945ff);text-decoration:none;"
+                @click="domainDropOpen = false"
+              >
+                Manage domains →
+              </Link>
+            </div>
+          </div>
+
           <div class="admin-user-menu" ref="userDropdownEl">
             <button
               type="button"
@@ -438,6 +537,10 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
               class="admin-user-dropdown"
             >
               <Link :href="route('profile.edit')" @click="closeUserDropdown">Profile</Link>
+              <Link :href="route('domains.select')" @click="closeUserDropdown" style="display:flex;align-items:center;gap:.4rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                Switch Domain
+              </Link>
               <Link :href="route('logout')" method="post" as="button" @click="closeUserDropdown">
                 Log out
               </Link>
