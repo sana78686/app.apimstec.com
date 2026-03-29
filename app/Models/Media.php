@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Media extends Model
 {
+    protected $connection = 'tenant';
+
     protected $fillable = [
         'path',
         'filename',

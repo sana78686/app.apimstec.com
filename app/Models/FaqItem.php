@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class FaqItem extends Model
 {
+    protected $connection = 'tenant';
+
     protected $fillable = ['question', 'answer', 'sort_order'];
 
     protected $casts = [

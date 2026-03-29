@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DomainCredential extends Model
 {
+    protected $connection = 'tenant';
+
     protected $fillable = [
         'domain',
         'email_credentials',

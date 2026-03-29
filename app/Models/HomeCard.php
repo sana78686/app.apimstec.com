@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class HomeCard extends Model
 {
+    protected $connection = 'tenant';
+
     protected $fillable = ['title', 'description', 'icon', 'sort_order'];
 
     protected $casts = [

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Cache;
 
 class AnalyticsSetting extends Model
 {
+    protected $connection = 'tenant';
+
     protected $table = 'analytics_settings';
 
     protected $fillable = ['key', 'value'];

@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Blog extends Model
 {
+    /** Website content lives on the active tenant DB (see TenantMiddleware). */
+    protected $connection = 'tenant';
+
     protected $fillable = [
         'title',
         'slug',

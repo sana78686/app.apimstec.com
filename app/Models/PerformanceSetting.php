@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Cache;
 
 class PerformanceSetting extends Model
 {
+    protected $connection = 'tenant';
+
     protected $table = 'performance_settings';
 
     protected $fillable = ['key', 'value'];

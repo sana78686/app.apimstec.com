@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class BrokenLinkLog extends Model
 {
+    protected $connection = 'tenant';
+
     protected $table = 'broken_link_logs';
 
     protected $fillable = [

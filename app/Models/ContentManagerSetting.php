@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContentManagerSetting extends Model
 {
+    protected $connection = 'tenant';
+
     protected $fillable = ['key', 'value'];
 
     public static function get(string $key, ?string $default = null): ?string

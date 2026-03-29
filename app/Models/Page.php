@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Page extends Model
 {
+    /** Website content lives on the active tenant DB (see TenantMiddleware). */
+    protected $connection = 'tenant';
+
     protected $fillable = [
         'parent_id',
         'title',

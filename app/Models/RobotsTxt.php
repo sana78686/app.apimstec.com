@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\File;
 
 class RobotsTxt extends Model
 {
+    protected $connection = 'tenant';
+
     protected $table = 'robots_txt';
 
     protected $fillable = ['content'];
