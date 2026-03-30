@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Domain extends Model
 {
-    /** Lives on the master DB, never on the tenant DB. */
+    /** CMS registry DB only (`mysql` connection), never a site tenant DB. */
     protected $connection = 'mysql';
 
     protected $fillable = [
@@ -59,8 +59,8 @@ class Domain extends Model
     }
 
     /**
-     * True when this domain's credentials point at the same database as the CMS master connection.
-     * Schema actions must never run on master (domains table + admin data live there).
+     * True when this domain's credentials point at the same database as the CMS registry (mysql).
+     * Schema actions must never run on the registry (domains + admin data live there).
      */
     public function targetsMasterDatabase(): bool
     {

@@ -73,7 +73,11 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION'),
+    /*
+     * Must stay on the registry DB, not `tenant` (TenantMiddleware sets default to tenant).
+     * Falls back to DB_CONNECTION so sqlite-local dev still works.
+     */
+    'connection' => env('SESSION_CONNECTION') ?: env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------

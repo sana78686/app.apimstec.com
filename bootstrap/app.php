@@ -15,14 +15,18 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // TenantMiddleware runs on every request (web + api) to switch the
-        // `tenant` DB connection based on active domain session or X-Domain header.
-        $middleware->prepend(\App\Http\Middleware\TenantMiddleware::class);
-
+        // Tenant must run after StartSession on web — global prepend ran before session,
+        // so session('active_domain_id') was empty and `tenant` fell back to master DB_*.
         $middleware->web(append: [
+            \App\Http\Middleware\TenantMiddleware::class,
             \App\Http\Middleware\ApplyRedirects::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        // Public API (no session): resolve tenant from X-Domain header.
+        $middleware->api(append: [
+            \App\Http\Middleware\TenantMiddleware::class,
         ]);
 
         $middleware->alias([

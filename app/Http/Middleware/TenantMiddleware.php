@@ -9,14 +9,19 @@ use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Switches the `tenant` database connection on every request.
+ * Switches the `tenant` database connection on each request.
  *
- * Priority order:
- *  1. Admin session  → session('active_domain_id')
- *  2. Public API     → X-Domain request header (e.g. "compresspdf.id")
- *  3. Fallback       → tenant connection stays at default config (mirrors master).
- *                     Authenticated CMS routes use EnsureActiveDomain so admins always
- *                     pick a domain first; public API still uses X-Domain.
+ * Registered on the `web` stack (after StartSession) so session('active_domain_id') is
+ * available for the CMS. Registered on `api` for X-Domain on public frontend routes.
+ *
+ * Priority:
+ *  1. Admin session → session('active_domain_id')
+ *  2. Public API    → X-Domain header (e.g. compresspdf.id)
+ *  3. Fallback      → env CMS_TENANT_* or DB_* (only before a domain is resolved)
+ *
+ * When a domain is resolved, `database.default` is set to `tenant` so CMS code never
+ * accidentally hits the registry DB. User, Role, Permission, Domain models keep
+ * `protected $connection = 'mysql'`. Sessions use connection `mysql` (see config/session.php).
  */
 class TenantMiddleware
 {
@@ -62,5 +67,8 @@ class TenantMiddleware
         // Purge any cached PDO instance and reconnect with new credentials
         DB::purge('tenant');
         DB::reconnect('tenant');
+
+        // CMS content must use the site DB; only explicit `mysql` models touch the registry.
+        config(['database.default' => 'tenant']);
     }
 }

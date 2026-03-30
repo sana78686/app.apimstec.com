@@ -13,6 +13,7 @@ return [
     | to use as your default connection for database operations. This is
     | the connection which will be utilized unless another connection
     | is explicitly specified when you execute a query / statement.
+    | Runtime: TenantMiddleware may set default to `tenant` when a site is active.
     |
     */
 
@@ -64,10 +65,10 @@ return [
         ],
 
         /*
-         * Tenant = each website’s content DB. Runtime: TenantMiddleware overrides from session / X-Domain.
+         * Tenant = each website’s content DB only. TenantMiddleware overwrites this from the active Domain.
          *
-         * Optional: CMS_TENANT_* in .env are updated when an admin switches domain (single-hosting setups).
-         * Never overwrite DB_* with a site DB — mysql must stay on the master (users, domains, roles).
+         * Optional: CMS_TENANT_* in .env when switching domain (Artisan / single-server). Never point DB_*
+         * at a site database — `mysql` is the CMS registry (users, domains, roles, sessions).
          */
         'tenant' => [
             'driver'    => 'mysql',
