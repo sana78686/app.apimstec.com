@@ -50,13 +50,35 @@ class TenantMiddleware
             // 2. X-Domain header (public API routes from React frontends)
             $header = $request->header('X-Domain');
             if ($header) {
-                return Domain::where('domain', $header)->where('is_active', true)->first();
+                return $this->resolveDomainFromHostHeader($header);
             }
         } catch (\Throwable $e) {
             // Domains table may not exist yet (migration pending) — fail gracefully
         }
 
         return null;
+    }
+
+    /**
+     * Match `domains.domain` even if React sends www. prefix or different casing.
+     */
+    private function resolveDomainFromHostHeader(string $header): ?Domain
+    {
+        $raw = strtolower(trim($header));
+        if ($raw === '') {
+            return null;
+        }
+
+        $host = preg_replace('#:\d+$#', '', $raw) ?? $raw;
+        $candidates = array_unique(array_filter([
+            $host,
+            str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host,
+        ]));
+
+        return Domain::query()
+            ->where('is_active', true)
+            ->whereIn('domain', $candidates)
+            ->first();
     }
 
     private function switchTenantConnection(Domain $domain): void
