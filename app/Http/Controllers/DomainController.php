@@ -347,7 +347,6 @@ class DomainController extends Controller
             TenantArtisanDatabase::restore();
         }
     }
-
     /**
      * Roll back the last batch of migrations on the domain's database.
      */
