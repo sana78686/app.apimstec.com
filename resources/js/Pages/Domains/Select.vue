@@ -1,11 +1,14 @@
 <script setup>
-import { ref } from 'vue'
-import { router, useForm, Link } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router, useForm, Link, usePage } from '@inertiajs/vue3'
 
 const props = defineProps({
   domains:        { type: Array,  default: () => [] },
   activeDomainId: { type: Number, default: null },
 })
+
+const page = usePage()
+const flashSuccess = computed(() => page.props.flash?.success ?? null)
 
 /* ── Domain selection ── */
 function pick(id) {
@@ -51,6 +54,8 @@ function submit() {
 
     <!-- ── Body ── -->
     <main class="sel-body">
+
+      <p v-if="flashSuccess" class="sel-flash" role="status">{{ flashSuccess }}</p>
 
       <!-- ══ NO DOMAINS ══ -->
       <div v-if="!domains.length" class="sel-empty-wrap">
@@ -166,6 +171,8 @@ function submit() {
               </div>
             </div>
 
+            <p v-if="form.errors.db_connection" class="modal-err" style="margin-top:0.35rem;">{{ form.errors.db_connection }}</p>
+
             <div class="modal-footer">
               <button type="button" class="sel-btn sel-btn--ghost" @click="closeModal">Cancel</button>
               <button type="submit" class="sel-btn sel-btn--primary" :disabled="form.processing">
@@ -227,9 +234,24 @@ function submit() {
 .sel-body {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  gap: 1rem;
+}
+
+.sel-flash {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  max-width: 680px;
+  width: 100%;
+  font-size: 0.875rem;
+  color: #1a6b2c;
+  background: #e8f5e9;
+  border: 1px solid #b7dfb9;
+  border-radius: 10px;
+  text-align: center;
 }
 
 /* ── Empty state ── */

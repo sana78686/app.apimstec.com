@@ -534,7 +534,14 @@
   background: var(--admin-main-bg);
 }
 
-.admin-user-dropdown button {
+.admin-user-dropdown button.admin-user-dropdown-action {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--admin-text);
+}
+
+.admin-user-dropdown button:not(.admin-user-dropdown-action) {
   color: #b91c1c;
 }
 

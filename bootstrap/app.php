@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
+            'active.domain' => \App\Http\Middleware\EnsureActiveDomain::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

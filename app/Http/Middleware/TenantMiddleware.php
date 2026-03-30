@@ -14,7 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Priority order:
  *  1. Admin session  → session('active_domain_id')
  *  2. Public API     → X-Domain request header (e.g. "compresspdf.id")
- *  3. Fallback       → tenant connection stays pointing at master DB
+ *  3. Fallback       → tenant connection stays at default config (mirrors master).
+ *                     Authenticated CMS routes use EnsureActiveDomain so admins always
+ *                     pick a domain first; public API still uses X-Domain.
  */
 class TenantMiddleware
 {

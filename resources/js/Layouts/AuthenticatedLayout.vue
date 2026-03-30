@@ -18,7 +18,13 @@ const domainDropEl   = ref(null);
 
 function switchDomain(id) {
   domainDropOpen.value = false;
-  router.post(route('domains.switch'), { domain_id: id ?? null }, { preserveScroll: true });
+  router.post(route('domains.switch'), { domain_id: id }, { preserveScroll: true });
+}
+
+/** Clear active site and open the picker (CMS is blocked until a domain is chosen). */
+function openDomainPicker() {
+  domainDropOpen.value = false;
+  router.post(route('domains.switch'), { domain_id: null });
 }
 
 /** Which nav panel to show: driven by current route. Home = dashboard only, Lock = credentials, Pencil = content only, SEO = seo.*, Gear = account (profile, users, roles). */
@@ -481,7 +487,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
               style="display:flex;align-items:center;gap:.4rem;padding:.3rem .75rem;border-radius:20px;border:1px solid var(--admin-card-border,#eaeaef);background:var(--admin-card-bg,#fff);font-size:.8125rem;cursor:pointer;white-space:nowrap;"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              <span>{{ activeDomain ? activeDomain.name : 'Master DB' }}</span>
+              <span>{{ activeDomain ? activeDomain.name : 'Choose website' }}</span>
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div
@@ -491,10 +497,9 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
               <button
                 type="button"
                 style="display:block;width:100%;text-align:left;padding:.5rem .9rem;font-size:.8125rem;border:none;background:none;cursor:pointer;"
-                :style="!activeDomain ? 'font-weight:600;color:var(--admin-primary,#4945ff)' : ''"
-                @click="switchDomain(null)"
+                @click="openDomainPicker"
               >
-                Master DB
+                Choose / change website…
               </button>
               <hr style="margin:0;" />
               <button
@@ -537,10 +542,10 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
               class="admin-user-dropdown"
             >
               <Link :href="route('profile.edit')" @click="closeUserDropdown">Profile</Link>
-              <Link :href="route('domains.select')" @click="closeUserDropdown" style="display:flex;align-items:center;gap:.4rem;">
+              <button type="button" class="admin-user-dropdown-action" @click="closeUserDropdown(); openDomainPicker();">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                Switch Domain
-              </Link>
+                Choose website
+              </button>
               <Link :href="route('logout')" method="post" as="button" @click="closeUserDropdown">
                 Log out
               </Link>

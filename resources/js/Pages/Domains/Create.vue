@@ -1,5 +1,5 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DomainSetupLayout from '@/Layouts/DomainSetupLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, useForm } from '@inertiajs/vue3';
@@ -58,10 +58,8 @@ async function testConnection() {
 
 <template>
   <Head title="Add domain" />
-  <AuthenticatedLayout>
-    <template #header>Add domain</template>
-
-    <div class="admin-form-page" style="max-width:600px;">
+  <DomainSetupLayout>
+    <div class="admin-form-page" style="max-width:600px;margin:0 auto;">
       <div class="admin-form-page-header mb-3">
         <h1 class="admin-form-page-title">Add domain</h1>
         <p class="admin-form-page-desc text-muted small">
@@ -168,6 +166,8 @@ async function testConnection() {
             {{ testResult.success ? '✓' : '✗' }} {{ testResult.message }}
           </span>
         </div>
+
+        <InputError :message="form.errors.db_connection" class="mt-2" />
       </div>
 
       <!-- Default flag -->
@@ -187,5 +187,5 @@ async function testConnection() {
         {{ form.processing ? 'Saving…' : 'Add domain' }}
       </PrimaryButton>
     </div>
-  </AuthenticatedLayout>
+  </DomainSetupLayout>
 </template>

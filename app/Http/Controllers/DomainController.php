@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +27,7 @@ class DomainController extends Controller
             'db_password' => 'required|string',
         ]);
 
-        return $this->tryConnect(
+        return $this->connectionTestJsonResponse(
             $data['db_host'], $data['db_port'],
             $data['db_name'], $data['db_username'], $data['db_password']
         );
@@ -38,14 +39,17 @@ class DomainController extends Controller
     public function testSavedConnection(Domain $domain): \Illuminate\Http\JsonResponse
     {
         $cfg = $domain->connectionConfig();
-        return $this->tryConnect(
+
+        return $this->connectionTestJsonResponse(
             $cfg['host'], $cfg['port'],
             $cfg['database'], $cfg['username'], $cfg['password']
         );
     }
 
-    /** Attempt a raw PDO connection and return a JSON result. */
-    private function tryConnect(string $host, int $port, string $db, string $user, string $pass): \Illuminate\Http\JsonResponse
+    /**
+     * @return array{0: bool, 1: string} Whether the connection succeeded, and a status or error message.
+     */
+    private function verifyDatabaseConnection(string $host, int $port, string $db, string $user, string $pass): array
     {
         try {
             $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
@@ -53,9 +57,29 @@ class DomainController extends Controller
                 \PDO::ATTR_TIMEOUT => 5,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ]);
-            return response()->json(['success' => true,  'message' => 'Connection successful — credentials are correct!']);
+
+            return [true, 'Connection successful — credentials are correct!'];
         } catch (\PDOException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+            return [false, $e->getMessage()];
+        }
+    }
+
+    private function connectionTestJsonResponse(string $host, int $port, string $db, string $user, string $pass): \Illuminate\Http\JsonResponse
+    {
+        [$ok, $message] = $this->verifyDatabaseConnection($host, $port, $db, $user, $pass);
+
+        return response()->json(['success' => $ok, 'message' => $message]);
+    }
+
+    /** @throws ValidationException */
+    private function assertDatabaseCredentialsWork(string $host, int $port, string $db, string $user, string $pass): void
+    {
+        [$ok, $message] = $this->verifyDatabaseConnection($host, $port, $db, $user, $pass);
+
+        if (! $ok) {
+            throw ValidationException::withMessages([
+                'db_connection' => ['Could not connect to the database. '.$message],
+            ]);
         }
     }
 
@@ -115,6 +139,14 @@ class DomainController extends Controller
             'is_default'   => 'boolean',
         ]);
 
+        $this->assertDatabaseCredentialsWork(
+            $data['db_host'],
+            (int) $data['db_port'],
+            $data['db_name'],
+            $data['db_username'],
+            $data['db_password'],
+        );
+
         if (!empty($data['is_default'])) {
             Domain::where('is_default', true)->update(['is_default' => false]);
         }
@@ -168,6 +200,19 @@ class DomainController extends Controller
             Domain::where('is_default', true)->where('id', '!=', $domain->id)->update(['is_default' => false]);
         }
 
+        $plainPassword = $data['db_password'] ?? '';
+        if ($plainPassword === '') {
+            $plainPassword = $domain->decryptedPassword();
+        }
+
+        $this->assertDatabaseCredentialsWork(
+            $data['db_host'],
+            (int) $data['db_port'],
+            $data['db_name'],
+            $data['db_username'],
+            $plainPassword,
+        );
+
         // Only update password if a new one was entered
         if (empty($data['db_password'])) {
             unset($data['db_password']);
@@ -201,14 +246,17 @@ class DomainController extends Controller
         $id       = $request->input('domain_id');
         $redirect = $request->input('redirect', 'back'); // 'dashboard' | 'back'
 
-        if (!$id) {
-            session()->forget('active_domain_id');
-            $msg = 'Switched to master database.';
-        } else {
-            $domain = Domain::where('id', $id)->where('is_active', true)->firstOrFail();
-            session(['active_domain_id' => $domain->id]);
-            $msg = "Now managing: {$domain->name}";
+        if (! $id) {
+            $request->session()->forget('active_domain_id');
+
+            return redirect()
+                ->route('domains.select')
+                ->with('success', 'Select a website to manage its content.');
         }
+
+        $domain = Domain::where('id', $id)->where('is_active', true)->firstOrFail();
+        session(['active_domain_id' => $domain->id]);
+        $msg = "Now managing: {$domain->name}";
 
         return $redirect === 'dashboard'
             ? redirect()->route('dashboard')->with('success', $msg)

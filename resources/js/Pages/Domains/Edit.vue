@@ -202,6 +202,8 @@ async function testNewCredentials() {
             {{ testResult.success ? '✓' : '✗' }} {{ testResult.message }}
           </span>
         </div>
+
+        <InputError :message="form.errors.db_connection" class="mt-2" />
       </div>
 
       <!-- Flags -->

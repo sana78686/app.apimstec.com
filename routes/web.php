@@ -27,40 +27,56 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    if (! session('active_domain_id')) {
+        return redirect()->route('domains.select');
+    }
+
+    return redirect()->route('dashboard');
 });
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots');
 
 Route::get('/dashboard', function () {
-    // Always require domain selection — redirect until a domain is active in session
-    if (!session('active_domain_id')) {
-        return redirect()->route('domains.select');
-    }
     return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'verified', 'active.domain'])->name('dashboard');
 
-// Domain management + session switcher (admin only)
+/*
+|--------------------------------------------------------------------------
+| Domain onboarding (no active tenant yet)
+|--------------------------------------------------------------------------
+| Until a website database is selected, the CMS cannot save SEO/content anywhere.
+| Only these routes are reachable; everything else requires active.domain.
+*/
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/domains/select', [DomainController::class, 'select'])->name('domains.select');
-    Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
     Route::get('/domains/create', [DomainController::class, 'create'])->name('domains.create');
     Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
+    Route::post('/domains/switch', [DomainController::class, 'switchDomain'])->name('domains.switch');
+    Route::post('/domains/test-connection', [DomainController::class, 'testConnection'])->name('domains.test-connection');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Full CMS (requires selected domain → tenant DB for content)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
+    Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
     Route::get('/domains/{domain}/edit', [DomainController::class, 'edit'])->name('domains.edit');
     Route::put('/domains/{domain}', [DomainController::class, 'update'])->name('domains.update');
     Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])->name('domains.destroy');
-    Route::post('/domains/switch', [DomainController::class, 'switchDomain'])->name('domains.switch');
-    Route::post('/domains/test-connection', [DomainController::class, 'testConnection'])->name('domains.test-connection');
     Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])->name('domains.sync-schema');
     Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])->name('domains.migrate-fresh');
     Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])->name('domains.rollback-schema');
     Route::post('/domains/{domain}/test-connection', [DomainController::class, 'testSavedConnection'])->name('domains.test-saved-connection');
 });
 
-Route::middleware(['auth', 'verified'])->prefix('credentials')->name('credentials.')->group(function () {
+Route::middleware(['auth', 'verified', 'active.domain'])->prefix('credentials')->name('credentials.')->group(function () {
     Route::get('/', [CredentialController::class, 'index'])->name('index');
     Route::get('/create', [CredentialController::class, 'create'])->name('create');
     Route::post('/', [CredentialController::class, 'store'])->name('store');
@@ -69,7 +85,7 @@ Route::middleware(['auth', 'verified'])->prefix('credentials')->name('credential
     Route::delete('/{credential}', [CredentialController::class, 'destroy'])->name('destroy');
 });
 
-Route::middleware(['auth', 'verified'])->prefix('content-manager')->name('content-manager.')->group(function () {
+Route::middleware(['auth', 'verified', 'active.domain'])->prefix('content-manager')->name('content-manager.')->group(function () {
     Route::get('/', [ContentManagerController::class, 'index'])->name('index');
     Route::put('/', [ContentManagerController::class, 'update'])->name('update');
     Route::put('/home-seo', [ContentManagerController::class, 'homeSeoUpdate'])->name('home-seo.update');
@@ -99,9 +115,9 @@ Route::middleware(['auth', 'verified'])->prefix('content-manager')->name('conten
 
 Route::get('/media', function () {
     return Inertia::render('Media/Index');
-})->middleware(['auth', 'verified'])->name('media.index');
+})->middleware(['auth', 'verified', 'active.domain'])->name('media.index');
 
-Route::middleware(['auth', 'verified'])->prefix('seo')->name('seo.')->group(function () {
+Route::middleware(['auth', 'verified', 'active.domain'])->prefix('seo')->name('seo.')->group(function () {
     Route::get('/home-page', [HomePageSeoController::class, 'index'])->name('home-page');
     Route::get('/meta-manager', [MetaManagerController::class, 'index'])->name('meta-manager');
     Route::get('/meta-manager/create', [MetaManagerController::class, 'create'])->name('meta-manager.create');
@@ -145,31 +161,31 @@ Route::middleware(['auth', 'verified'])->prefix('seo')->name('seo.')->group(func
     }
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::middleware(['verified', 'permission:users.view'])->prefix('users')->name('users.')->group(function () {
+    Route::middleware('permission:users.view')->prefix('users')->name('users.')->group(function () {
         Route::get('/', fn () => Inertia::render('Users/Index'))->name('index');
         Route::get('/create', fn () => Inertia::render('Users/Create'))->name('create')->middleware('permission:users.create');
         Route::get('/{user}/edit', fn ($user) => Inertia::render('Users/Edit', ['userId' => is_object($user) ? $user->id : (int) $user]))->name('edit')->middleware('permission:users.edit');
     });
 
-    Route::middleware(['verified', 'permission:roles.view'])->prefix('roles')->name('roles.')->group(function () {
+    Route::middleware('permission:roles.view')->prefix('roles')->name('roles.')->group(function () {
         Route::get('/', fn () => Inertia::render('Roles/Index'))->name('index');
         Route::get('/create', fn () => Inertia::render('Roles/Create'))->name('create')->middleware('permission:roles.create');
         Route::get('/{role}/edit', fn ($role) => Inertia::render('Roles/Edit', ['roleId' => $role]))->name('edit')->middleware('permission:roles.edit');
     });
 
-    Route::middleware('verified')->prefix('pages')->name('pages.')->group(function () {
+    Route::prefix('pages')->name('pages.')->group(function () {
         Route::get('/', [PageController::class, 'index'])->name('index');
         Route::get('/create', [PageController::class, 'create'])->name('create');
         Route::get('/{page}/seo', fn ($page) => redirect()->route('seo.meta-manager.create', ['page_id' => is_object($page) ? $page->id : $page]))->name('seo');
         Route::get('/{page}/edit', [PageController::class, 'edit'])->name('edit');
     });
 
-    Route::middleware('verified')->prefix('blogs')->name('blogs.')->group(function () {
+    Route::prefix('blogs')->name('blogs.')->group(function () {
         Route::get('/', [BlogController::class, 'index'])->name('index');
         Route::get('/create', [BlogController::class, 'create'])->name('create');
         Route::get('/{blog}/edit', [BlogController::class, 'edit'])->name('edit');

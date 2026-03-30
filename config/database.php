@@ -66,7 +66,8 @@ return [
         /*
          * Tenant connection — dynamically overridden per-request by TenantMiddleware
          * based on the active domain (admin session or X-Domain API header).
-         * Defaults to the master DB so the CMS works without domain selection.
+         * Defaults to the master DB when no tenant is resolved (e.g. unauthenticated).
+         * Logged-in CMS routes require a selected domain (see EnsureActiveDomain).
          */
         'tenant' => [
             'driver'    => 'mysql',

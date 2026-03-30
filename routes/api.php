@@ -29,7 +29,7 @@ Route::prefix('public')->name('api.public.')->group(function () {
     Route::get('legal/{slug}', [PublicApiController::class, 'legalPage'])->name('legal')->where('slug', 'terms|privacy-policy|disclaimer|about-us|cookie-policy');
 });
 
-Route::middleware(['web', 'auth', 'verified'])->group(function () {
+Route::middleware(['web', 'auth', 'verified', 'active.domain'])->group(function () {
     Route::middleware('permission:users.view')->prefix('users')->name('api.users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/create', [UserController::class, 'create'])->name('create')->middleware('permission:users.create');
