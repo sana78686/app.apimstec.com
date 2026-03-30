@@ -64,18 +64,18 @@ return [
         ],
 
         /*
-         * Tenant connection — dynamically overridden per-request by TenantMiddleware
-         * based on the active domain (admin session or X-Domain API header).
-         * Defaults to the master DB when no tenant is resolved (e.g. unauthenticated).
-         * Logged-in CMS routes require a selected domain (see EnsureActiveDomain).
+         * Tenant = each website’s content DB. Runtime: TenantMiddleware overrides from session / X-Domain.
+         *
+         * Optional: CMS_TENANT_* in .env are updated when an admin switches domain (single-hosting setups).
+         * Never overwrite DB_* with a site DB — mysql must stay on the master (users, domains, roles).
          */
         'tenant' => [
             'driver'    => 'mysql',
-            'host'      => env('DB_HOST', '127.0.0.1'),
-            'port'      => env('DB_PORT', '3306'),
-            'database'  => env('DB_DATABASE', 'laravel'),
-            'username'  => env('DB_USERNAME', 'root'),
-            'password'  => env('DB_PASSWORD', ''),
+            'host'      => env('CMS_TENANT_HOST', env('DB_HOST', '127.0.0.1')),
+            'port'      => env('CMS_TENANT_PORT', env('DB_PORT', '3306')),
+            'database'  => env('CMS_TENANT_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username'  => env('CMS_TENANT_USERNAME', env('DB_USERNAME', 'root')),
+            'password'  => env('CMS_TENANT_PASSWORD', env('DB_PASSWORD', '')),
             'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix'    => '',

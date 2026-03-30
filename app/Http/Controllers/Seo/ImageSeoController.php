@@ -9,6 +9,7 @@ use App\Models\MediaSource;
 use App\Models\Page;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -110,7 +111,7 @@ class ImageSeoController extends Controller
     public function updateAlt(Request $request): JsonResponse
     {
         $request->validate([
-            'id' => 'required|exists:media,id',
+            'id' => ['required', Rule::exists(Media::class, 'id')],
             'alt_text' => 'nullable|string|max:500',
         ]);
 
@@ -129,7 +130,7 @@ class ImageSeoController extends Controller
      */
     public function compress(Request $request): JsonResponse
     {
-        $request->validate(['id' => 'required|exists:media,id']);
+        $request->validate(['id' => ['required', Rule::exists(Media::class, 'id')]]);
 
         $media = Media::findOrFail($request->id);
         if (! $media->isLocal()) {
@@ -160,7 +161,7 @@ class ImageSeoController extends Controller
      */
     public function toWebP(Request $request): JsonResponse
     {
-        $request->validate(['id' => 'required|exists:media,id']);
+        $request->validate(['id' => ['required', Rule::exists(Media::class, 'id')]]);
 
         $media = Media::findOrFail($request->id);
         if (! $media->isLocal()) {

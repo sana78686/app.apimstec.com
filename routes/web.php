@@ -20,6 +20,7 @@ use App\Http\Controllers\Seo\ContentOptimizationController;
 use App\Http\Controllers\Seo\PerformanceController;
 use App\Http\Controllers\Seo\UrlRedirectsController;
 use App\Http\Controllers\DomainController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SitemapController;
@@ -162,6 +163,14 @@ Route::middleware(['auth', 'verified', 'active.domain'])->prefix('seo')->name('s
 });
 
 Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
+    Route::post('/maintenance/optimize-clear', [MaintenanceController::class, 'optimizeClear'])->name('maintenance.optimize-clear');
+    Route::post('/maintenance/config-clear', [MaintenanceController::class, 'configClear'])->name('maintenance.config-clear');
+    Route::post('/maintenance/cache-clear', [MaintenanceController::class, 'cacheClear'])->name('maintenance.cache-clear');
+    Route::post('/maintenance/migrate', [MaintenanceController::class, 'migrate'])->name('maintenance.migrate');
+    Route::post('/maintenance/rollback', [MaintenanceController::class, 'rollback'])->name('maintenance.rollback');
+    Route::post('/maintenance/migrate-fresh', [MaintenanceController::class, 'migrateFresh'])->name('maintenance.migrate-fresh');
+    Route::post('/maintenance/seed', [MaintenanceController::class, 'seed'])->name('maintenance.seed');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

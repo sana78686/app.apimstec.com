@@ -65,12 +65,12 @@ class PageController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:pages,slug',
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => 'nullable|exists:pages,id',
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
@@ -114,12 +114,12 @@ class PageController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:pages,slug,' . $page->id,
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->ignore($page->id)],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => 'nullable|exists:pages,id',
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);

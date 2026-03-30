@@ -114,6 +114,15 @@ function closeUserDropdown() {
   userDropdownOpen.value = false;
 }
 
+/** POST to a named maintenance route; optional confirm for destructive actions. */
+function maintenancePost(routeName, confirmMessage = null) {
+  if (confirmMessage && !window.confirm(confirmMessage)) {
+    return;
+  }
+  closeUserDropdown();
+  router.post(route(routeName), {}, { preserveScroll: true });
+}
+
 function onDocumentClick(e) {
   if (userDropdownOpen.value && userDropdownEl.value && !userDropdownEl.value.contains(e.target)) {
     closeUserDropdown();
@@ -546,6 +555,60 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 Choose website
               </button>
+              <hr class="admin-user-dropdown-divider" />
+              <p class="admin-user-dropdown-label">Active site database</p>
+              <button
+                type="button"
+                class="admin-user-dropdown-action"
+                @click="maintenancePost('maintenance.migrate')"
+              >
+                Run migrations
+              </button>
+              <button
+                type="button"
+                class="admin-user-dropdown-action"
+                @click="maintenancePost('maintenance.seed', 'Run tenant seed on the active site database?')"
+              >
+                Seed tenant (TenantDatabaseSeeder)
+              </button>
+              <button
+                type="button"
+                class="admin-user-dropdown-action admin-user-dropdown-danger"
+                @click="maintenancePost('maintenance.rollback', 'Roll back the last migration batch on the active site database?')"
+              >
+                Roll back last batch
+              </button>
+              <button
+                type="button"
+                class="admin-user-dropdown-action admin-user-dropdown-danger"
+                @click="maintenancePost('maintenance.migrate-fresh', 'This will DELETE ALL TABLES in the active site database and re-run migrations. Continue?')"
+              >
+                Fresh migrate (wipe site DB)
+              </button>
+              <hr class="admin-user-dropdown-divider" />
+              <p class="admin-user-dropdown-label">Application caches</p>
+              <button
+                type="button"
+                class="admin-user-dropdown-action"
+                @click="maintenancePost('maintenance.optimize-clear')"
+              >
+                Optimize clear
+              </button>
+              <button
+                type="button"
+                class="admin-user-dropdown-action"
+                @click="maintenancePost('maintenance.config-clear')"
+              >
+                Config clear
+              </button>
+              <button
+                type="button"
+                class="admin-user-dropdown-action"
+                @click="maintenancePost('maintenance.cache-clear')"
+              >
+                Cache clear
+              </button>
+              <hr class="admin-user-dropdown-divider" />
               <Link :href="route('logout')" method="post" as="button" @click="closeUserDropdown">
                 Log out
               </Link>
@@ -555,6 +618,8 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
       </header>
 
       <main class="admin-content">
+        <p v-if="page.props.flash?.success" class="admin-flash admin-flash-success" role="status">{{ page.props.flash.success }}</p>
+        <p v-if="page.props.flash?.error" class="admin-flash admin-flash-error" role="alert">{{ page.props.flash.error }}</p>
         <slot />
       </main>
     </div>

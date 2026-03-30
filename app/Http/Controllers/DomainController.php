@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Domain;
+use App\Support\TenantArtisanDatabase;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -157,6 +158,8 @@ class DomainController extends Controller
         // auto_select=true: immediately activate this domain and go to dashboard
         if ($request->boolean('auto_select')) {
             session(['active_domain_id' => $domain->id]);
+            $this->syncTenantEnvFile($domain);
+
             return redirect()->route('dashboard')->with('success', "Now managing: {$domain->name}");
         }
 
@@ -222,6 +225,10 @@ class DomainController extends Controller
 
         $domain->update($data);
 
+        if ((int) session('active_domain_id') === (int) $domain->id) {
+            $this->syncTenantEnvFile($domain->fresh());
+        }
+
         return redirect()->route('domains.index')->with('success', "Domain \"{$domain->name}\" updated.");
     }
 
@@ -233,8 +240,9 @@ class DomainController extends Controller
         $name = $domain->name;
         $domain->delete();
 
-        if (session('active_domain_id') === $domain->id) {
+        if ((int) session('active_domain_id') === (int) $domain->id) {
             session()->forget('active_domain_id');
+            $this->syncTenantEnvFile(null);
         }
 
         return redirect()->route('domains.index')->with('success', "Domain \"{$name}\" removed.");
@@ -248,6 +256,7 @@ class DomainController extends Controller
 
         if (! $id) {
             $request->session()->forget('active_domain_id');
+            $this->syncTenantEnvFile(null);
 
             return redirect()
                 ->route('domains.select')
@@ -256,6 +265,7 @@ class DomainController extends Controller
 
         $domain = Domain::where('id', $id)->where('is_active', true)->firstOrFail();
         session(['active_domain_id' => $domain->id]);
+        $this->syncTenantEnvFile($domain);
         $msg = "Now managing: {$domain->name}";
 
         return $redirect === 'dashboard'
@@ -264,38 +274,11 @@ class DomainController extends Controller
     }
 
     /**
-     * Register a one-off Laravel connection for this domain only, so schema commands never
-     * touch the shared `tenant` default (which mirrors master) or the `mysql` connection.
-     *
-     * @throws \InvalidArgumentException when domain points at the master CMS database
+     * Mirror active site DB into .env as CMS_TENANT_* (optional single-server workflow).
      */
-    private function schemaConnectionForDomain(Domain $domain): string
+    private function syncTenantEnvFile(?Domain $domain): void
     {
-        if ($domain->targetsMasterDatabase()) {
-            throw new \InvalidArgumentException(
-                'This domain uses the same database as the CMS master. Schema actions run only on each website’s own database — create a separate DB in Plesk for this site.'
-            );
-        }
-
-        $name = 'domain_schema_'.$domain->id;
-        config(["database.connections.{$name}" => $domain->connectionConfig()]);
-        DB::purge($name);
-        DB::reconnect($name);
-
-        $resolved = DB::connection($name)->getDatabaseName();
-        if ($resolved !== $domain->db_name) {
-            DB::purge($name);
-            throw new \RuntimeException(
-                'Could not verify target database (expected "'.$domain->db_name.'", got "'.$resolved.'").'
-            );
-        }
-
-        return $name;
-    }
-
-    private function schemaTargetLabel(Domain $domain): string
-    {
-        return $domain->db_host.' / '.$domain->db_name;
+        TenantArtisanDatabase::syncEnvToFile($domain);
     }
 
     /**
@@ -304,17 +287,16 @@ class DomainController extends Controller
      */
     public function syncSchema(Domain $domain): RedirectResponse
     {
-        $connName = null;
         try {
-            $connName = $this->schemaConnectionForDomain($domain);
+            TenantArtisanDatabase::prepare($domain);
 
             Artisan::call('migrate', [
-                '--database' => $connName,
+                '--database' => TenantArtisanDatabase::CONNECTION,
                 '--force'    => true,
             ]);
 
             $output = Artisan::output();
-            $target = $this->schemaTargetLabel($domain);
+            $target = TenantArtisanDatabase::label($domain);
 
             return back()->with('success', "Schema synced for \"{$domain->name}\" on {$target}. ".trim($output));
         } catch (\InvalidArgumentException $e) {
@@ -322,9 +304,7 @@ class DomainController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Schema sync failed: '.$e->getMessage());
         } finally {
-            if ($connName !== null) {
-                DB::purge($connName);
-            }
+            TenantArtisanDatabase::restore();
         }
     }
 
@@ -336,10 +316,9 @@ class DomainController extends Controller
      */
     public function migrateFresh(Domain $domain): RedirectResponse
     {
-        $connName = null;
         try {
-            $connName = $this->schemaConnectionForDomain($domain);
-            $conn     = DB::connection($connName);
+            TenantArtisanDatabase::prepare($domain);
+            $conn = DB::connection(TenantArtisanDatabase::CONNECTION);
 
             // Disable FK checks so we can drop tables in any order
             $conn->statement('SET FOREIGN_KEY_CHECKS=0');
@@ -351,13 +330,13 @@ class DomainController extends Controller
             $conn->statement('SET FOREIGN_KEY_CHECKS=1');
 
             Artisan::call('migrate', [
-                '--database' => $connName,
+                '--database' => TenantArtisanDatabase::CONNECTION,
                 '--force'    => true,
             ]);
 
             $output  = trim(Artisan::output());
             $summary = $output ?: 'All migrations ran successfully.';
-            $target  = $this->schemaTargetLabel($domain);
+            $target  = TenantArtisanDatabase::label($domain);
 
             return back()->with('success', "Fresh migrate complete for \"{$domain->name}\" on {$target}. All tables rebuilt. {$summary}");
         } catch (\InvalidArgumentException $e) {
@@ -365,9 +344,7 @@ class DomainController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Fresh migration failed: '.$e->getMessage());
         } finally {
-            if ($connName !== null) {
-                DB::purge($connName);
-            }
+            TenantArtisanDatabase::restore();
         }
     }
 
@@ -376,18 +353,17 @@ class DomainController extends Controller
      */
     public function rollbackSchema(Domain $domain): RedirectResponse
     {
-        $connName = null;
         try {
-            $connName = $this->schemaConnectionForDomain($domain);
+            TenantArtisanDatabase::prepare($domain);
 
             Artisan::call('migrate:rollback', [
-                '--database' => $connName,
+                '--database' => TenantArtisanDatabase::CONNECTION,
                 '--force'    => true,
             ]);
 
             $output  = trim(Artisan::output());
             $summary = $output ?: 'Last migration batch rolled back.';
-            $target  = $this->schemaTargetLabel($domain);
+            $target  = TenantArtisanDatabase::label($domain);
 
             return back()->with('success', "Rollback complete for \"{$domain->name}\" on {$target}. {$summary}");
         } catch (\InvalidArgumentException $e) {
@@ -395,9 +371,7 @@ class DomainController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Rollback failed: '.$e->getMessage());
         } finally {
-            if ($connName !== null) {
-                DB::purge($connName);
-            }
+            TenantArtisanDatabase::restore();
         }
     }
 }

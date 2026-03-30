@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,7 +65,7 @@ class BlogController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blogs,slug',
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique(Blog::class, 'slug')],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',
@@ -116,7 +117,7 @@ class BlogController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:blogs,slug,' . $blog->id,
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->ignore($blog->id)],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',

@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'flash' => [
                 'success' => $request->session()->get('success'),
+                'error'   => $request->session()->get('error'),
             ],
             'domains'       => $allDomains,
             'activeDomain'  => $activeDomain,

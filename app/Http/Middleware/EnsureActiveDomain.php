@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * CMS routes require a selected domain so the tenant connection targets that site's database.
- * Domain management (routes under domains.*) and profile stay on the master DB and skip this check.
+ * Onboarding routes (domains.select, create, store, switch, test-connection) are registered without this middleware.
  */
 class EnsureActiveDomain
 {

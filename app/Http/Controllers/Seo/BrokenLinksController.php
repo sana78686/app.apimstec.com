@@ -7,6 +7,7 @@ use App\Models\BrokenLinkLog;
 use App\Models\Redirect;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,7 +87,7 @@ class BrokenLinksController extends Controller
      */
     public function dismiss(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'integer', 'exists:broken_link_logs,id']]);
+        $request->validate(['id' => ['required', 'integer', Rule::exists(BrokenLinkLog::class, 'id')]]);
 
         $log = BrokenLinkLog::findOrFail($request->id);
         $log->markResolved();

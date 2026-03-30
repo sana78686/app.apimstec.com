@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\TenantEnvWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,6 +37,7 @@ class AuthenticatedSessionController extends Controller
 
         // Clear any previously selected domain so the picker is always shown after login
         $request->session()->forget('active_domain_id');
+        $this->clearTenantEnvFile();
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -44,6 +47,8 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $this->clearTenantEnvFile();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
@@ -51,5 +56,14 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function clearTenantEnvFile(): void
+    {
+        try {
+            TenantEnvWriter::forApplication()->removeTenantKeys();
+        } catch (\Throwable $e) {
+            Log::warning('Tenant .env sync failed: '.$e->getMessage());
+        }
     }
 }
