@@ -22,7 +22,7 @@ class PublicApiController extends Controller
     public function contact(Request $request): JsonResponse
     {
         return response()->json([
-            'contact_email' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_EMAIL, ''),
+            'contact_email' => config('contact.form_mail_to'),
             'contact_phone' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_PHONE, ''),
             'contact_address' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_ADDRESS, ''),
         ]);
@@ -41,10 +41,11 @@ class PublicApiController extends Controller
             'accepts_terms' => 'required|accepted',
         ]);
 
-        $toEmail = ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_EMAIL, '');
-        if (empty($toEmail)) {
+        $toEmail = (string) config('contact.form_mail_to');
+        $siteName = (string) config('contact.public_site_name');
+        if ($toEmail === '') {
             throw ValidationException::withMessages([
-                'form' => ['Contact form is not configured. Please set the contact email in the CMS Content Manager.'],
+                'form' => ['Contact form is not configured. Set CONTACT_FORM_MAIL_TO in .env.'],
             ]);
         }
 
@@ -53,16 +54,17 @@ class PublicApiController extends Controller
         $subject = $validated['subject'];
         $messageBody = $validated['message'];
 
-        $body = "Contact form submission\n\n"
+        $body = "Contact form submission\n"
+            ."Website: {$siteName}\n\n"
             ."From: {$name} <{$email}>\n"
             ."Subject: {$subject}\n\n"
             ."Message:\n{$messageBody}\n";
 
         try {
-            Mail::raw($body, function ($mail) use ($toEmail, $email, $name, $subject) {
+            Mail::raw($body, function ($mail) use ($toEmail, $email, $name, $subject, $siteName) {
                 $mail->to($toEmail)
                     ->replyTo($email, $name)
-                    ->subject('Contact form: '.$subject);
+                    ->subject("[{$siteName}] Contact: {$subject}");
             });
         } catch (\Throwable $e) {
             report($e);
@@ -74,12 +76,13 @@ class PublicApiController extends Controller
         return response()->json(['message' => 'Message sent successfully.']);
     }
     /**
-     * List publicly visible pages for nav/sitemap (no auth).
-     * Uses visibility only — not is_published — so "visible" pages show on the React site.
+     * List visible pages for nav (no auth). Only placement header, footer, or both (null = not listed).
+     * Direct URLs /page/{slug} still work for any visible page via pageBySlug.
      */
     public function pages(Request $request): JsonResponse
     {
         $pages = Page::where('visibility', Page::VISIBILITY_VISIBLE)
+            ->whereIn('placement', ['header', 'footer', 'both'])
             ->orderByRaw('parent_id IS NULL DESC')
             ->orderBy('sort_order')
             ->orderBy('title')
