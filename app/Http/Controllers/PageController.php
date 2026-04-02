@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use App\Support\ContentLocales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,16 @@ use Inertia\Response;
 
 class PageController extends Controller
 {
+    private function cmsLocale(Request $request): string
+    {
+        return ContentLocales::normalize($request->session()->get('cms_locale'));
+    }
+
     private function pageToArray(Page $page): array
     {
         return [
             'id' => $page->id,
+            'locale' => $page->locale ?? ContentLocales::DEFAULT,
             'parent_id' => $page->parent_id,
             'title' => $page->title,
             'slug' => $page->slug,
@@ -39,8 +46,10 @@ class PageController extends Controller
 
     public function index(): Response|JsonResponse
     {
-        $pages = Page::with('children')
+        $loc = $this->cmsLocale(request());
+        $pages = Page::with(['children' => fn ($q) => $q->where('locale', $loc)])
             ->whereNull('parent_id')
+            ->where('locale', $loc)
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
@@ -54,7 +63,8 @@ class PageController extends Controller
 
     public function create(): Response|JsonResponse
     {
-        $parents = Page::whereNull('parent_id')->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'slug']);
+        $loc = $this->cmsLocale(request());
+        $parents = Page::whereNull('parent_id')->where('locale', $loc)->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'slug']);
         if (request()->is('api/*')) {
             return response()->json(['parents' => $parents]);
         }
@@ -63,20 +73,22 @@ class PageController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
+        $loc = $this->cmsLocale($request);
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')],
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', $loc))],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
         $visibility = $request->input('visibility', Page::VISIBILITY_DRAFT);
         $page = Page::create([
+            'locale' => $loc,
             'title' => $request->title,
             'slug' => $request->slug ?: Str::slug($request->title),
             'content' => $request->content,
@@ -97,8 +109,13 @@ class PageController extends Controller
 
     public function edit(Page $page): Response|JsonResponse
     {
-        $page->load('children');
-        $parents = Page::whereNull('parent_id')->where('id', '!=', $page->id)->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'slug']);
+        $page->load(['children' => fn ($q) => $q->where('locale', $page->locale)]);
+        $parents = Page::whereNull('parent_id')
+            ->where('locale', $page->locale)
+            ->where('id', '!=', $page->id)
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get(['id', 'title', 'slug']);
         $payload = [
             'pageId' => $page->id,
             'page' => $this->pageToArray($page),
@@ -112,14 +129,15 @@ class PageController extends Controller
 
     public function update(Request $request, Page $page): RedirectResponse|JsonResponse
     {
+        $loc = $page->locale ?? $this->cmsLocale($request);
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->ignore($page->id)],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))->ignore($page->id)],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')],
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', $loc))],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
@@ -151,7 +169,7 @@ class PageController extends Controller
 
     public function destroy(Page $page): RedirectResponse|JsonResponse
     {
-        if ($page->children()->exists()) {
+        if ($page->children()->where('locale', $page->locale)->exists()) {
             if (request()->is('api/*')) {
                 return response()->json(['message' => 'Cannot delete a page that has children.'], 422);
             }

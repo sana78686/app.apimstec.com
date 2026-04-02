@@ -8,7 +8,7 @@ class FaqItem extends Model
 {
     protected $connection = 'tenant';
 
-    protected $fillable = ['question', 'answer', 'sort_order'];
+    protected $fillable = ['locale', 'question', 'answer', 'sort_order'];
 
     protected $casts = [
         'sort_order' => 'integer',

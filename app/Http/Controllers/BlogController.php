@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Blog;
+use App\Support\ContentLocales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,11 +14,17 @@ use Inertia\Response;
 
 class BlogController extends Controller
 {
+    private function cmsLocale(Request $request): string
+    {
+        return ContentLocales::normalize($request->session()->get('cms_locale'));
+    }
+
     private function blogToArray(Blog $blog): array
     {
         $blog->loadMissing('author:id,name');
         return [
             'id' => $blog->id,
+            'locale' => $blog->locale ?? ContentLocales::DEFAULT,
             'title' => $blog->title,
             'slug' => $blog->slug,
             'excerpt' => $blog->excerpt,
@@ -42,7 +49,9 @@ class BlogController extends Controller
 
     public function index(): Response|JsonResponse
     {
+        $loc = $this->cmsLocale(request());
         $blogs = Blog::with('author:id,name')
+            ->where('locale', $loc)
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($b) => $this->blogToArray($b));
@@ -63,9 +72,10 @@ class BlogController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
+        $loc = $this->cmsLocale($request);
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => ['nullable', 'string', 'max:255', Rule::unique(Blog::class, 'slug')],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',
@@ -81,6 +91,7 @@ class BlogController extends Controller
 
         $visibility = $request->input('visibility', Blog::VISIBILITY_DRAFT);
         $blog = Blog::create([
+            'locale' => $loc,
             'title' => $request->title,
             'slug' => $request->slug ?: Str::slug($request->title),
             'excerpt' => $request->excerpt,
@@ -115,9 +126,10 @@ class BlogController extends Controller
 
     public function update(Request $request, Blog $blog): RedirectResponse|JsonResponse
     {
+        $loc = $blog->locale ?? $this->cmsLocale($request);
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->ignore($blog->id)],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))->ignore($blog->id)],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ContentManagerSetting;
 use App\Models\FaqItem;
 use App\Models\HomeCard;
+use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,6 +32,12 @@ class ContentManagerController extends Controller
     public const KEY_ABOUT_US_CONTENT = 'about_us_content';
     public const KEY_COOKIE_POLICY_CONTENT = 'cookie_policy_content';
 
+    /** Per-locale home body HTML: home_page_content_en, home_page_content_ms, … */
+    public static function homePageContentKey(string $locale): string
+    {
+        return 'home_page_content_'.ContentLocales::normalize($locale);
+    }
+
     /** Slug => [key, title] for legal/content pages exposed to frontend */
     public static function legalPageMap(): array
     {
@@ -43,10 +50,12 @@ class ContentManagerController extends Controller
         ];
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+
         return Inertia::render('ContentManager/Index', [
-            'homePageContent' => ContentManagerSetting::get(self::KEY_HOME_PAGE_CONTENT, ''),
+            'homePageContent' => ContentManagerSetting::get(self::homePageContentKey($loc), ''),
             'homeMetaTitle' => ContentManagerSetting::get(self::KEY_HOME_META_TITLE, ''),
             'homeMetaDescription' => ContentManagerSetting::get(self::KEY_HOME_META_DESCRIPTION, ''),
             'homeMetaKeywords' => ContentManagerSetting::get(self::KEY_HOME_META_KEYWORDS, ''),
@@ -91,13 +100,17 @@ class ContentManagerController extends Controller
     }
 
     /** Home page with URL-driven tabs: content-manager/home/faq and content-manager/home/use-cards */
-    public function home(string $tab): Response
+    public function home(Request $request, ?string $tab = null): Response
     {
+        $tab = in_array($tab, ['faq', 'use-cards'], true) ? $tab : 'faq';
+        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+
         return Inertia::render('ContentManager/Home', [
-            'faqItems' => FaqItem::ordered()->get(),
-            'cards' => HomeCard::ordered()->get(),
+            'faqItems' => FaqItem::where('locale', $loc)->ordered()->get(),
+            'cards' => HomeCard::where('locale', $loc)->ordered()->get(),
             'iconOptions' => HomeCard::iconOptions(),
             'activeTab' => $tab,
+            'cmsLocale' => $loc,
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -211,7 +224,8 @@ class ContentManagerController extends Controller
         ]);
 
         if (array_key_exists('home_page_content', $validated)) {
-            ContentManagerSetting::set(self::KEY_HOME_PAGE_CONTENT, $validated['home_page_content'] ?? '');
+            $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+            ContentManagerSetting::set(self::homePageContentKey($loc), $validated['home_page_content'] ?? '');
         }
         if (array_key_exists('contact_email', $validated)) {
             ContentManagerSetting::set(self::KEY_CONTACT_EMAIL, $validated['contact_email'] ?? '');

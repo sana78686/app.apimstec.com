@@ -13,6 +13,28 @@ const page = usePage();
 const user          = computed(() => page.props.auth?.user ?? {});
 const domains       = computed(() => page.props.domains ?? []);
 const activeDomain  = computed(() => page.props.activeDomain ?? null);
+const cmsLocale     = computed(() => page.props.cmsLocale ?? 'en');
+const cmsLocales    = computed(() => page.props.cmsLocales ?? ['en', 'ms', 'es', 'fr', 'ar', 'ru']);
+
+const cmsLocaleLabels = {
+  en: 'EN · English',
+  ms: 'MS · Melayu',
+  es: 'ES · Español',
+  fr: 'FR · Français',
+  ar: 'AR · العربية',
+  ru: 'RU · Русский',
+};
+
+const showCmsLocaleSwitcher = computed(() => {
+  const n = route().current() || '';
+  return n.startsWith('content-manager') || n.startsWith('pages.') || n.startsWith('blogs.');
+});
+
+function onCmsLocaleChange(ev) {
+  const locale = ev?.target?.value;
+  if (!locale) return;
+  router.post(route('content-manager.locale'), { locale }, { preserveScroll: true });
+}
 const domainDropOpen = ref(false);
 const domainDropEl   = ref(null);
 
@@ -486,6 +508,19 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
         </div>
 
         <div class="admin-header-right">
+
+          <div v-if="showCmsLocaleSwitcher" class="admin-cms-locale-wrap" style="margin-right:0.75rem;">
+            <label for="admin-cms-locale" class="visually-hidden">Content language (saves pages, blogs, FAQ, cards per locale)</label>
+            <select
+              id="admin-cms-locale"
+              class="form-select form-select-sm"
+              style="max-width:12rem;font-size:0.8125rem;"
+              :value="cmsLocale"
+              @change="onCmsLocaleChange"
+            >
+              <option v-for="l in cmsLocales" :key="l" :value="l">{{ cmsLocaleLabels[l] || l }}</option>
+            </select>
+          </div>
 
           <!-- Domain switcher pill -->
           <div v-if="domains.length" class="admin-domain-menu" ref="domainDropEl" style="position:relative;margin-right:.75rem;">

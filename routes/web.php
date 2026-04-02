@@ -22,6 +22,7 @@ use App\Http\Controllers\Seo\UrlRedirectsController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\CredentialController;
+use App\Http\Controllers\CmsLocaleController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
@@ -87,11 +88,15 @@ Route::middleware(['auth', 'verified', 'active.domain'])->prefix('credentials')-
 });
 
 Route::middleware(['auth', 'verified', 'active.domain'])->prefix('content-manager')->name('content-manager.')->group(function () {
+    Route::post('/locale', [CmsLocaleController::class, 'update'])->name('locale');
     Route::get('/', [ContentManagerController::class, 'index'])->name('index');
     Route::put('/', [ContentManagerController::class, 'update'])->name('update');
     Route::put('/home-seo', [ContentManagerController::class, 'homeSeoUpdate'])->name('home-seo.update');
-    Route::get('/home', [ContentManagerController::class, 'home'])->name('home')->defaults('tab', 'faq');
-    Route::get('/home/{tab}', [ContentManagerController::class, 'home'])->where('tab', 'faq|use-cards');
+    /* Single named route so Ziggy/Inertia always resolve tab in the path: /home/faq | /home/use-cards */
+    Route::get('/home/{tab?}', [ContentManagerController::class, 'home'])
+        ->name('home')
+        ->where('tab', 'faq|use-cards')
+        ->defaults('tab', 'faq');
     Route::get('/faq', fn () => redirect()->route('content-manager.home', ['tab' => 'faq']))->name('faq');
     Route::get('/cards', fn () => redirect()->route('content-manager.home', ['tab' => 'use-cards']))->name('cards');
     Route::get('/contact', [ContentManagerController::class, 'contact'])->name('contact');

@@ -11,6 +11,7 @@ class Blog extends Model
     protected $connection = 'tenant';
 
     protected $fillable = [
+        'locale',
         'title',
         'slug',
         'excerpt',

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Domain;
+use App\Support\ContentLocales;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -50,6 +51,8 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'cmsLocale' => ContentLocales::normalize($request->session()->get('cms_locale')),
+            'cmsLocales' => ContentLocales::SUPPORTED,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),

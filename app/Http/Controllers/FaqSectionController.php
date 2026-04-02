@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FaqItem;
+use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,8 @@ class FaqSectionController extends Controller
 {
     public function index(): Response
     {
-        $items = FaqItem::ordered()->get();
+        $loc = ContentLocales::normalize(request()->session()->get('cms_locale'));
+        $items = FaqItem::where('locale', $loc)->ordered()->get();
 
         return Inertia::render('ContentManager/FaqSection', [
             'faqItems' => $items,
@@ -27,8 +29,10 @@ class FaqSectionController extends Controller
             'answer' => 'required|string|max:2000',
         ]);
 
-        $maxOrder = FaqItem::max('sort_order') ?? 0;
+        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $maxOrder = FaqItem::where('locale', $loc)->max('sort_order') ?? 0;
         FaqItem::create([
+            'locale' => $loc,
             'question' => $validated['question'],
             'answer' => $validated['answer'],
             'sort_order' => $maxOrder + 1,

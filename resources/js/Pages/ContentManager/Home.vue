@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
 const ICON_EMOJI = {
@@ -21,6 +21,16 @@ const props = defineProps({
   iconOptions: { type: Object, default: () => ({}) },
   activeTab: { type: String, default: 'faq' }, // from URL: faq | use-cards
   flash: { type: Object, default: () => ({}) },
+});
+
+const page = usePage();
+
+/** Prefer path segment so the correct panel shows even if Ziggy/route props were wrong */
+const effectiveTab = computed(() => {
+  const u = String(page.url || '');
+  if (u.includes('/home/use-cards')) return 'use-cards';
+  if (u.includes('/home/faq')) return 'faq';
+  return props.activeTab === 'use-cards' ? 'use-cards' : 'faq';
 });
 
 const iconOptionsList = computed(() =>
@@ -128,7 +138,7 @@ function iconLabel(key) {
 </script>
 
 <template>
-  <Head :title="activeTab === 'use-cards' ? 'Use cards – Home' : 'FAQ – Home'" />
+  <Head :title="effectiveTab === 'use-cards' ? 'Use cards – Home' : 'FAQ – Home'" />
 
   <AuthenticatedLayout>
     <template #header>Home page</template>
@@ -145,8 +155,9 @@ function iconLabel(key) {
           <Link
             :href="route('content-manager.home', { tab: 'faq' })"
             class="content-manager-home-tab"
-            :class="{ active: activeTab === 'faq' }"
+            :class="{ active: effectiveTab === 'faq' }"
             role="tab"
+            :aria-selected="effectiveTab === 'faq'"
           >
             FAQ
           </Link>
@@ -155,8 +166,9 @@ function iconLabel(key) {
           <Link
             :href="route('content-manager.home', { tab: 'use-cards' })"
             class="content-manager-home-tab"
-            :class="{ active: activeTab === 'use-cards' }"
+            :class="{ active: effectiveTab === 'use-cards' }"
             role="tab"
+            :aria-selected="effectiveTab === 'use-cards'"
           >
             Use cards
           </Link>
@@ -165,7 +177,7 @@ function iconLabel(key) {
 
       <div class="content-manager-home-panel">
         <!-- FAQ tab panel -->
-        <div v-show="activeTab === 'faq'" class="admin-list-page">
+        <div v-show="effectiveTab === 'faq'" class="admin-list-page">
           <div class="admin-list-page-header">
             <div>
               <h1 class="admin-list-page-title">FAQ</h1>
@@ -211,7 +223,7 @@ function iconLabel(key) {
         </div>
 
         <!-- Use cards tab panel -->
-        <div v-show="activeTab === 'use-cards'" class="admin-list-page">
+        <div v-show="effectiveTab === 'use-cards'" class="admin-list-page">
           <div class="admin-list-page-header">
             <div>
               <h1 class="admin-list-page-title">Use cards</h1>

@@ -8,7 +8,7 @@ class HomeCard extends Model
 {
     protected $connection = 'tenant';
 
-    protected $fillable = ['title', 'description', 'icon', 'sort_order'];
+    protected $fillable = ['locale', 'title', 'description', 'icon', 'sort_order'];
 
     protected $casts = [
         'sort_order' => 'integer',

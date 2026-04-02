@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HomeCard;
+use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,8 @@ class CardsSectionController extends Controller
 {
     public function index(): Response
     {
-        $cards = HomeCard::ordered()->get();
+        $loc = ContentLocales::normalize(request()->session()->get('cms_locale'));
+        $cards = HomeCard::where('locale', $loc)->ordered()->get();
         $iconOptions = HomeCard::iconOptions();
 
         return Inertia::render('ContentManager/CardsSection', [
@@ -30,8 +32,10 @@ class CardsSectionController extends Controller
             'icon' => 'nullable|string|max:64',
         ]);
 
-        $maxOrder = HomeCard::max('sort_order') ?? 0;
+        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $maxOrder = HomeCard::where('locale', $loc)->max('sort_order') ?? 0;
         HomeCard::create([
+            'locale' => $loc,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? '',
             'icon' => $validated['icon'] ?? null,

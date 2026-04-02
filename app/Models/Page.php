@@ -12,6 +12,7 @@ class Page extends Model
     protected $connection = 'tenant';
 
     protected $fillable = [
+        'locale',
         'parent_id',
         'title',
         'slug',

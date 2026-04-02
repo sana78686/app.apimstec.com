@@ -8,6 +8,7 @@ use App\Models\ContentManagerSetting;
 use App\Models\FaqItem;
 use App\Models\HomeCard;
 use App\Models\Page;
+use App\Support\ContentLocales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -15,6 +16,11 @@ use Illuminate\Validation\ValidationException;
 
 class PublicApiController extends Controller
 {
+    private function publicLocale(Request $request): string
+    {
+        return ContentLocales::normalize($request->query('locale'));
+    }
+
     /**
      * Contact details for the frontend contact page (no auth).
      * The contact_email is where form submissions are sent (set in CMS Content Manager).
@@ -41,13 +47,8 @@ class PublicApiController extends Controller
             'accepts_terms' => 'required|accepted',
         ]);
 
-        $toEmail = (string) config('contact.form_mail_to');
+        $toEmail = trim((string) config('contact.form_mail_to')) ?: 'apimstecofficial@gmail.com';
         $siteName = (string) config('contact.public_site_name');
-        if ($toEmail === '') {
-            throw ValidationException::withMessages([
-                'form' => ['Contact form is not configured. Set CONTACT_FORM_MAIL_TO in .env.'],
-            ]);
-        }
 
         $name = $validated['name'];
         $email = $validated['email'];
@@ -81,7 +82,9 @@ class PublicApiController extends Controller
      */
     public function pages(Request $request): JsonResponse
     {
-        $pages = Page::where('visibility', Page::VISIBILITY_VISIBLE)
+        $locale = $this->publicLocale($request);
+        $pages = Page::where('locale', $locale)
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->whereIn('placement', ['header', 'footer', 'both'])
             ->orderByRaw('parent_id IS NULL DESC')
             ->orderBy('sort_order')
@@ -106,9 +109,11 @@ class PublicApiController extends Controller
      * Get a single page by slug with full content and SEO (no auth).
      * Public access when visibility is visible (not gated on is_published).
      */
-    public function pageBySlug(string $slug): JsonResponse
+    public function pageBySlug(Request $request, string $slug): JsonResponse
     {
+        $locale = $this->publicLocale($request);
         $page = Page::where('slug', $slug)
+            ->where('locale', $locale)
             ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->first();
 
@@ -138,7 +143,9 @@ class PublicApiController extends Controller
      */
     public function blogs(Request $request): JsonResponse
     {
-        $blogs = Blog::where('is_published', true)
+        $locale = $this->publicLocale($request);
+        $blogs = Blog::where('locale', $locale)
+            ->where('is_published', true)
             ->where('visibility', Blog::VISIBILITY_VISIBLE)
             ->orderBy('published_at', 'desc')
             ->orderBy('title')
@@ -159,9 +166,11 @@ class PublicApiController extends Controller
     /**
      * Get a single published blog by slug with full content and SEO (no auth).
      */
-    public function blogBySlug(string $slug): JsonResponse
+    public function blogBySlug(Request $request, string $slug): JsonResponse
     {
+        $locale = $this->publicLocale($request);
         $blog = Blog::where('slug', $slug)
+            ->where('locale', $locale)
             ->where('is_published', true)
             ->where('visibility', Blog::VISIBILITY_VISIBLE)
             ->first();
@@ -198,7 +207,8 @@ class PublicApiController extends Controller
      */
     public function faq(Request $request): JsonResponse
     {
-        $items = FaqItem::ordered()->get(['id', 'question', 'answer', 'sort_order']);
+        $locale = $this->publicLocale($request);
+        $items = FaqItem::where('locale', $locale)->ordered()->get(['id', 'question', 'answer', 'sort_order']);
 
         return response()->json(['faq' => $items]);
     }
@@ -208,7 +218,8 @@ class PublicApiController extends Controller
      */
     public function homeCards(Request $request): JsonResponse
     {
-        $cards = HomeCard::ordered()->get(['id', 'title', 'description', 'icon', 'sort_order']);
+        $locale = $this->publicLocale($request);
+        $cards = HomeCard::where('locale', $locale)->ordered()->get(['id', 'title', 'description', 'icon', 'sort_order']);
 
         return response()->json(['cards' => $cards]);
     }
@@ -218,8 +229,11 @@ class PublicApiController extends Controller
      */
     public function homeContent(Request $request): JsonResponse
     {
+        $loc = $this->publicLocale($request);
+        $contentKey = ContentManagerController::homePageContentKey($loc);
+
         return response()->json([
-            'content'          => ContentManagerSetting::get(ContentManagerController::KEY_HOME_PAGE_CONTENT, ''),
+            'content'          => ContentManagerSetting::get($contentKey, ''),
             'meta_title'       => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_TITLE, ''),
             'meta_description' => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_DESCRIPTION, ''),
             'meta_keywords'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_KEYWORDS, ''),
