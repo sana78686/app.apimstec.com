@@ -94,7 +94,7 @@ class PublicApiController extends Controller
                 'meta_description' => $p->meta_description,
                 'placement' => $p->placement,
                 'sort_order' => $p->sort_order,
-                
+
             ]);
 
         return response()->json(['pages' => $pages]);
@@ -106,8 +106,8 @@ class PublicApiController extends Controller
     public function pageBySlug(string $slug): JsonResponse
     {
         $page = Page::where('slug', $slug)
-            ->where('is_published', true)
-            ->where('visibility', Page::VISIBILITY_VISIBLE)
+            // ->where('is_published', true)
+            // ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->first();
 
         if (! $page) {
