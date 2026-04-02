@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\ContentLocales;
 use App\Support\TenantEnvWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,7 +40,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->forget('active_domain_id');
         $this->clearTenantEnvFile();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+
+        return redirect()->intended(route('dashboard', ['cms_locale' => $loc], absolute: false));
     }
 
     /**

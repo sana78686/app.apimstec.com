@@ -6,6 +6,7 @@ use App\Models\Domain;
 use App\Support\ContentLocales;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Tightenco\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -49,9 +50,19 @@ class HandleInertiaRequests extends Middleware
             // Domains table may not exist yet (migration pending) — fail gracefully
         }
 
+        $cmsLocale = ContentLocales::normalize(
+            $request->route('cms_locale') ?? $request->session()->get('cms_locale')
+        );
+
+        $ziggy = (new Ziggy)->toArray();
+        $ziggy['defaults'] = array_merge($ziggy['defaults'] ?? [], [
+            'cms_locale' => $cmsLocale,
+        ]);
+
         return [
             ...parent::share($request),
-            'cmsLocale' => ContentLocales::normalize($request->session()->get('cms_locale')),
+            'ziggy' => $ziggy,
+            'cmsLocale' => $cmsLocale,
             'cmsLocales' => ContentLocales::SUPPORTED,
             'flash' => [
                 'success' => $request->session()->get('success'),

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
+import CmsLangFlag from '@/Components/CmsLangFlag.vue';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../../css/admin.css';
@@ -26,15 +27,25 @@ const cmsLocaleLabels = {
 };
 
 const showCmsLocaleSwitcher = computed(() => {
-  const n = route().current() || '';
-  return n.startsWith('content-manager') || n.startsWith('pages.') || n.startsWith('blogs.');
+  if (!activeDomain.value) return false;
+  const u = (page.url || '').replace(/^\//, '');
+  return /^(en|ms|es|fr|ar|ru)(\/|$)/.test(u);
 });
 
-function onCmsLocaleChange(ev) {
-  const locale = ev?.target?.value;
-  if (!locale) return;
-  router.post(route('content-manager.locale'), { locale }, { preserveScroll: true });
+const cmsLangOpen = ref(false);
+const cmsLangEl = ref(null);
+
+/** Switch CMS URL locale (same pattern as frontend /en/... → /fr/...). */
+function visitCmsLocale(l) {
+  const url = page.url || '';
+  const [pathPart, query] = url.split('?');
+  const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
+  const newPath = path.replace(/^\/(en|ms|es|fr|ar|ru)(?=\/|$)/, `/${l}`);
+  const target = newPath + (query ? `?${query}` : '');
+  cmsLangOpen.value = false;
+  router.visit(target, { preserveScroll: true });
 }
+
 const domainDropOpen = ref(false);
 const domainDropEl   = ref(null);
 
@@ -151,6 +162,9 @@ function onDocumentClick(e) {
   }
   if (domainDropOpen.value && domainDropEl.value && !domainDropEl.value.contains(e.target)) {
     domainDropOpen.value = false;
+  }
+  if (cmsLangOpen.value && cmsLangEl.value && !cmsLangEl.value.contains(e.target)) {
+    cmsLangOpen.value = false;
   }
 }
 
@@ -509,17 +523,43 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
 
         <div class="admin-header-right">
 
-          <div v-if="showCmsLocaleSwitcher" class="admin-cms-locale-wrap" style="margin-right:0.75rem;">
-            <label for="admin-cms-locale" class="visually-hidden">Content language (saves pages, blogs, FAQ, cards per locale)</label>
-            <select
-              id="admin-cms-locale"
-              class="form-select form-select-sm"
-              style="max-width:12rem;font-size:0.8125rem;"
-              :value="cmsLocale"
-              @change="onCmsLocaleChange"
+          <div
+            v-if="showCmsLocaleSwitcher"
+            ref="cmsLangEl"
+            class="admin-lang-dropdown"
+          >
+            <span id="admin-cms-locale-label" class="visually-hidden">Content language — URLs use /en/, /fr/, … Pages and blogs save for the active locale.</span>
+            <button
+              type="button"
+              class="admin-lang-dropdown-trigger"
+              aria-labelledby="admin-cms-locale-label"
+              :aria-expanded="cmsLangOpen"
+              aria-haspopup="listbox"
+              @click.stop="cmsLangOpen = !cmsLangOpen"
             >
-              <option v-for="l in cmsLocales" :key="l" :value="l">{{ cmsLocaleLabels[l] || l }}</option>
-            </select>
+              <CmsLangFlag :lang="cmsLocale" :width="20" />
+              <span class="admin-lang-dropdown-trigger-text">{{ cmsLocaleLabels[cmsLocale] || cmsLocale }}</span>
+              <span class="admin-lang-dropdown-chevron" aria-hidden="true">▼</span>
+            </button>
+            <ul
+              v-show="cmsLangOpen"
+              class="admin-lang-dropdown-menu"
+              role="listbox"
+            >
+              <li v-for="l in cmsLocales" :key="l" role="none">
+                <button
+                  type="button"
+                  class="admin-lang-dropdown-item"
+                  :class="{ 'is-active': l === cmsLocale }"
+                  role="option"
+                  :aria-selected="l === cmsLocale"
+                  @click="visitCmsLocale(l)"
+                >
+                  <CmsLangFlag :lang="l" :width="20" />
+                  <span>{{ cmsLocaleLabels[l] || l }}</span>
+                </button>
+              </li>
+            </ul>
           </div>
 
           <!-- Domain switcher pill -->

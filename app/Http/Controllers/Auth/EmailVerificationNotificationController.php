@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,9 @@ class EmailVerificationNotificationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('dashboard', absolute: false));
+            $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+
+            return redirect()->intended(route('dashboard', ['cms_locale' => $loc], absolute: false));
         }
 
         $request->user()->sendEmailVerificationNotification();

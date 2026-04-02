@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tenant must run after StartSession on web — global prepend ran before session,
         // so session('active_domain_id') was empty and `tenant` fell back to master DB_*.
         $middleware->web(append: [
+            \App\Http\Middleware\RedirectIfCmsMissingLocalePrefix::class,
             \App\Http\Middleware\TenantMiddleware::class,
             \App\Http\Middleware\ApplyRedirects::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
