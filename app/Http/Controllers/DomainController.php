@@ -117,7 +117,6 @@ class DomainController extends Controller
         return Inertia::render('Domains/Index', [
             'domains'        => $domains,
             'activeDomainId' => session('active_domain_id'),
-            'flash'          => ['success' => session('success'), 'error' => session('error')],
         ]);
     }
 
@@ -290,10 +289,7 @@ class DomainController extends Controller
         try {
             TenantArtisanDatabase::prepare($domain);
 
-            Artisan::call('migrate', [
-                '--database' => TenantArtisanDatabase::CONNECTION,
-                '--force'    => true,
-            ]);
+            Artisan::call('migrate', TenantArtisanDatabase::tenantMigrateOptions());
 
             $output = Artisan::output();
             $target = TenantArtisanDatabase::label($domain);
@@ -355,10 +351,7 @@ class DomainController extends Controller
         try {
             TenantArtisanDatabase::prepare($domain);
 
-            Artisan::call('migrate:rollback', [
-                '--database' => TenantArtisanDatabase::CONNECTION,
-                '--force'    => true,
-            ]);
+            Artisan::call('migrate:rollback', TenantArtisanDatabase::tenantMigrateOptions());
 
             $output  = trim(Artisan::output());
             $summary = $output ?: 'Last migration batch rolled back.';

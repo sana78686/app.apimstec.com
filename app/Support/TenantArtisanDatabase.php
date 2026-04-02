@@ -14,6 +14,26 @@ class TenantArtisanDatabase
 {
     public const CONNECTION = 'tenant';
 
+    /**
+     * Migrations for site content DBs only (pages, blogs, etc.).
+     * Central CMS migrations stay in database/migrations and use `php artisan migrate` on the master connection.
+     */
+    public const TENANT_MIGRATIONS_PATH = 'database/migrations/tenant';
+
+    /**
+     * Options for migrate / migrate:rollback on the tenant connection only.
+     *
+     * @return array<string, mixed>
+     */
+    public static function tenantMigrateOptions(): array
+    {
+        return [
+            '--database' => self::CONNECTION,
+            '--path'     => self::TENANT_MIGRATIONS_PATH,
+            '--force'    => true,
+        ];
+    }
+
     public static function syncEnvToFile(?Domain $domain): void
     {
         try {

@@ -59,10 +59,7 @@ class MaintenanceController extends Controller
         try {
             TenantArtisanDatabase::prepare($domain);
 
-            Artisan::call('migrate', [
-                '--database' => TenantArtisanDatabase::CONNECTION,
-                '--force'    => true,
-            ]);
+            Artisan::call('migrate', TenantArtisanDatabase::tenantMigrateOptions());
 
             $target = TenantArtisanDatabase::label($domain);
 
@@ -83,10 +80,7 @@ class MaintenanceController extends Controller
         try {
             TenantArtisanDatabase::prepare($domain);
 
-            Artisan::call('migrate:rollback', [
-                '--database' => TenantArtisanDatabase::CONNECTION,
-                '--force'    => true,
-            ]);
+            Artisan::call('migrate:rollback', TenantArtisanDatabase::tenantMigrateOptions());
 
             $target = TenantArtisanDatabase::label($domain);
 
@@ -118,10 +112,7 @@ class MaintenanceController extends Controller
             }
             $conn->statement('SET FOREIGN_KEY_CHECKS=1');
 
-            Artisan::call('migrate', [
-                '--database' => TenantArtisanDatabase::CONNECTION,
-                '--force'    => true,
-            ]);
+            Artisan::call('migrate', TenantArtisanDatabase::tenantMigrateOptions());
 
             $target = TenantArtisanDatabase::label($domain);
             $summary = trim(Artisan::output()) ?: 'Migrations completed.';
