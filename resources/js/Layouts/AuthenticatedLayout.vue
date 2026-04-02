@@ -148,9 +148,13 @@ function closeUserDropdown() {
   userDropdownOpen.value = false;
 }
 
-/** POST to a named maintenance route; optional confirm for destructive actions. */
-function maintenancePost(routeName, confirmMessage = null) {
-  if (confirmMessage && !window.confirm(confirmMessage)) {
+/** POST to a named maintenance route — always confirm first (DB / Artisan impact). */
+function maintenancePost(routeName, confirmMessage) {
+  const msg =
+    confirmMessage && String(confirmMessage).trim() !== ''
+      ? confirmMessage
+      : 'Run this maintenance command? Only continue if you intend to change application or database state.';
+  if (!window.confirm(msg)) {
     return;
   }
   closeUserDropdown();
@@ -631,59 +635,87 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 Choose website
               </button>
-              <hr class="admin-user-dropdown-divider" />
-              <p class="admin-user-dropdown-label">Active site database</p>
-              <button
-                type="button"
-                class="admin-user-dropdown-action"
-                @click="maintenancePost('maintenance.migrate')"
-              >
-                Run migrations
-              </button>
-              <button
-                type="button"
-                class="admin-user-dropdown-action"
-                @click="maintenancePost('maintenance.seed', 'Run tenant seed on the active site database?')"
-              >
-                Seed tenant (TenantDatabaseSeeder)
-              </button>
-              <button
-                type="button"
-                class="admin-user-dropdown-action admin-user-dropdown-danger"
-                @click="maintenancePost('maintenance.rollback', 'Roll back the last migration batch on the active site database?')"
-              >
-                Roll back last batch
-              </button>
-              <button
-                type="button"
-                class="admin-user-dropdown-action admin-user-dropdown-danger"
-                @click="maintenancePost('maintenance.migrate-fresh', 'This will DELETE ALL TABLES in the active site database and re-run migrations. Continue?')"
-              >
-                Fresh migrate (wipe site DB)
-              </button>
-              <hr class="admin-user-dropdown-divider" />
-              <p class="admin-user-dropdown-label">Application caches</p>
-              <button
-                type="button"
-                class="admin-user-dropdown-action"
-                @click="maintenancePost('maintenance.optimize-clear')"
-              >
-                Optimize clear
-              </button>
-              <button
-                type="button"
-                class="admin-user-dropdown-action"
-                @click="maintenancePost('maintenance.config-clear')"
-              >
-                Config clear
-              </button>
-              <button
-                type="button"
-                class="admin-user-dropdown-action"
-                @click="maintenancePost('maintenance.cache-clear')"
-              >
-                Cache clear
-              </button>
+              <hr
+                v-if="can('system.database.migrate') || can('system.cache.clear')"
+                class="admin-user-dropdown-divider"
+              />
+              <template v-if="can('system.database.migrate')">
+                <p class="admin-user-dropdown-label">Active site database</p>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action"
+                  @click="maintenancePost(
+                    'maintenance.migrate',
+                    `Run pending migrations on the active site database?\n\nSite: ${activeDomain?.name || 'current'}\n\nThis adds or updates tables/columns only (normal Laravel migrate).`,
+                  )"
+                >
+                  Run migrations
+                </button>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action"
+                  @click="maintenancePost(
+                    'maintenance.seed',
+                    'Run TenantDatabaseSeeder on the active site database? This may insert or update default rows.',
+                  )"
+                >
+                  Seed tenant (TenantDatabaseSeeder)
+                </button>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action admin-user-dropdown-danger"
+                  @click="maintenancePost(
+                    'maintenance.rollback',
+                    'Roll back the LAST migration batch on the active site database? Tables/columns from that batch may be removed — data can be lost.',
+                  )"
+                >
+                  Roll back last batch
+                </button>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action admin-user-dropdown-danger"
+                  @click="maintenancePost(
+                    'maintenance.migrate-fresh',
+                    'This will DELETE ALL TABLES in the active site database and re-run migrations from scratch. ALL DATA IN THAT DATABASE WILL BE LOST. Continue?',
+                  )"
+                >
+                  Fresh migrate (wipe site DB)
+                </button>
+              </template>
+              <template v-if="can('system.cache.clear')">
+                <hr class="admin-user-dropdown-divider" />
+                <p class="admin-user-dropdown-label">Application caches (PHP / Laravel)</p>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action"
+                  @click="maintenancePost(
+                    'maintenance.optimize-clear',
+                    'Run php artisan optimize:clear? This clears compiled bootstrap, config, route, and view caches.',
+                  )"
+                >
+                  Optimize clear
+                </button>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action"
+                  @click="maintenancePost(
+                    'maintenance.config-clear',
+                    'Run php artisan config:clear? Configuration cache will be rebuilt on next request.',
+                  )"
+                >
+                  Config clear
+                </button>
+                <button
+                  type="button"
+                  class="admin-user-dropdown-action"
+                  @click="maintenancePost(
+                    'maintenance.cache-clear',
+                    'Run php artisan cache:clear? Application cache entries will be removed.',
+                  )"
+                >
+                  Cache clear
+                </button>
+              </template>
               <hr class="admin-user-dropdown-divider" />
               <Link :href="route('logout')" method="post" as="button" @click="closeUserDropdown">
                 Log out

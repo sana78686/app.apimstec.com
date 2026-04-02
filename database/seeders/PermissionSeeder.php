@@ -35,6 +35,11 @@ class PermissionSeeder extends Seeder
             ['name' => 'Manage sitemap', 'slug' => 'seo.sitemap.manage', 'group' => 'seo'],
             ['name' => 'Manage redirects', 'slug' => 'seo.redirects.manage', 'group' => 'seo'],
             ['name' => 'View SEO analytics', 'slug' => 'seo.analytics.view', 'group' => 'seo'],
+            // System / infrastructure (tenant DB migrations, Artisan cache — use with care)
+            ['name' => 'Run database migrations on site', 'slug' => 'system.database.migrate', 'group' => 'system'],
+            ['name' => 'Clear application / optimize caches', 'slug' => 'system.cache.clear', 'group' => 'system'],
+            ['name' => 'Run schema commands on domains', 'slug' => 'domains.schema.commands', 'group' => 'domains'],
+            ['name' => 'Remove domains from CMS', 'slug' => 'domains.delete', 'group' => 'domains'],
         ];
 
         foreach ($permissions as $p) {

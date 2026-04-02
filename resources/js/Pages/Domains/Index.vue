@@ -1,12 +1,21 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 defineProps({
   domains:        { type: Array,  default: () => [] },
   activeDomainId: { type: Number, default: null },
 });
+
+const page = usePage();
+
+function can(permission) {
+  const perms = page.props.auth?.user?.permissions;
+  if (!perms) return false;
+  if (perms.includes('*')) return true;
+  return perms.includes(permission);
+}
 
 const switching    = ref(null);
 const testResults  = ref({});
@@ -188,9 +197,9 @@ function confirmDelete(domain) {
                 <!-- Schema: only when domain has its own DB (not same as CMS master) -->
                 <td>
                   <span
-                    v-if="d.can_run_schema === false"
+                    v-if="d.can_run_schema === false || !can('domains.schema.commands')"
                     class="text-muted small"
-                    title="This domain points at the CMS master database. Use a separate database for the website, then schema tools apply only there."
+                    :title="d.can_run_schema === false ? 'This domain points at the CMS master database. Use a separate database for the website, then schema tools apply only there.' : 'You do not have permission to run schema commands.'"
                   >—</span>
                   <div
                     v-else
@@ -302,7 +311,7 @@ function confirmDelete(domain) {
 
                     <!-- Remove -->
                     <button
-                      v-if="!d.is_default"
+                      v-if="!d.is_default && can('domains.delete')"
                       class="admin-list-link admin-list-link-danger"
                       title="Remove from CMS — actual database is NOT deleted"
                       @click="confirmDelete(d)"

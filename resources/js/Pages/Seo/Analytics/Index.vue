@@ -2,8 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 
 const page = usePage();
 const props = defineProps({
@@ -12,6 +12,7 @@ const props = defineProps({
     default: () => ({
       gsc_site_url: '',
       ga_measurement_id: '',
+      frontend_head_snippet: '',
     }),
   },
   summary: {
@@ -30,7 +31,18 @@ const props = defineProps({
 const form = useForm({
   gsc_site_url: props.settings.gsc_site_url ?? '',
   ga_measurement_id: props.settings.ga_measurement_id ?? '',
+  frontend_head_snippet: props.settings.frontend_head_snippet ?? '',
 });
+
+watch(
+  () => props.settings,
+  (s) => {
+    form.gsc_site_url = s?.gsc_site_url ?? '';
+    form.ga_measurement_id = s?.ga_measurement_id ?? '';
+    form.frontend_head_snippet = s?.frontend_head_snippet ?? '';
+  },
+  { deep: true },
+);
 
 const successMessage = ref(page.props.flash?.success || '');
 
@@ -164,8 +176,25 @@ const GA_URL = 'https://analytics.google.com';
               placeholder="G-XXXXXXXXXX"
               maxlength="50"
             />
-            <p class="form-text mb-0">Your GA4 Measurement ID from Admin → Data Streams (starts with G-).</p>
+            <p class="form-text mb-0">
+              Injects <code class="admin-list-code">gtag.js</code> on the public site (same as Google’s snippet) unless this ID is already present in the custom head HTML below.
+            </p>
             <InputError v-if="form.errors.ga_measurement_id" :message="form.errors.ga_measurement_id" class="mt-1" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Public site <code>&lt;head&gt;</code> HTML (Search Console meta, GTM, other tags)</label>
+            <textarea
+              v-model="form.frontend_head_snippet"
+              class="form-control font-monospace"
+              rows="8"
+              spellcheck="false"
+              placeholder="e.g. &lt;meta name=&quot;google-site-verification&quot; content=&quot;…&quot; /&gt;&#10;&lt;script&gt; … &lt;/script&gt;"
+            />
+            <p class="form-text mb-0">
+              Rendered in the live React app’s <code class="admin-list-code">document.head</code> for SEO and third-party scripts. Same field as
+              <Link :href="route('content-manager.index')" class="text-decoration-none">Content manager → Home → Meta tags</Link>.
+            </p>
+            <InputError v-if="form.errors.frontend_head_snippet" :message="form.errors.frontend_head_snippet" class="mt-1" />
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <PrimaryButton :disabled="form.processing">Save settings</PrimaryButton>

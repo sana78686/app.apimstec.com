@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\ContentManagerController;
+use App\Models\AnalyticsSetting;
 use App\Models\Blog;
 use App\Models\ContentManagerSetting;
 use App\Models\FaqItem;
@@ -244,6 +245,7 @@ class PublicApiController extends Controller
             'meta_robots'      => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_ROBOTS, 'index,follow'),
             'canonical_url'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_CANONICAL_URL, ''),
             'head_snippet'     => ContentManagerSetting::get(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
+            'ga_measurement_id' => (string) AnalyticsSetting::getValue('ga_measurement_id', ''),
         ]);
     }
 

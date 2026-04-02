@@ -154,7 +154,7 @@ function submitSeo() {
             spellcheck="false"
             placeholder="Paste verification meta or analytics scripts for the public site"
           ></textarea>
-          <div class="form-text small text-muted">Same field as SEO → Home Page → Frontend head snippet.</div>
+          <div class="form-text small text-muted">Same field as SEO → Analytics → Public site head HTML, and SEO → Home Page SEO.</div>
           <InputError :message="seoForm.errors.frontend_head_snippet" />
         </div>
         <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="seoForm.processing" @click="submitSeo">

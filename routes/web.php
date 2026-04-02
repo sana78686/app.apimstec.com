@@ -78,10 +78,18 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
         Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
         Route::get('/domains/{domain}/edit', [DomainController::class, 'edit'])->name('domains.edit');
         Route::put('/domains/{domain}', [DomainController::class, 'update'])->name('domains.update');
-        Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])->name('domains.destroy');
-        Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])->name('domains.sync-schema');
-        Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])->name('domains.migrate-fresh');
-        Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])->name('domains.rollback-schema');
+        Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])
+            ->middleware('permission:domains.delete')
+            ->name('domains.destroy');
+        Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])
+            ->middleware('permission:domains.schema.commands')
+            ->name('domains.sync-schema');
+        Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])
+            ->middleware('permission:domains.schema.commands')
+            ->name('domains.migrate-fresh');
+        Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])
+            ->middleware('permission:domains.schema.commands')
+            ->name('domains.rollback-schema');
         Route::post('/domains/{domain}/test-connection', [DomainController::class, 'testSavedConnection'])->name('domains.test-saved-connection');
 
         Route::prefix('credentials')->name('credentials.')->group(function () {
@@ -118,10 +126,10 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
             Route::put('/cookie-policy', [ContentManagerController::class, 'cookiePolicyUpdate'])->name('cookie-policy.update');
             Route::post('/faq', [FaqSectionController::class, 'store'])->name('faq.store');
             Route::put('/faq/{faqItem}', [FaqSectionController::class, 'update'])->name('faq.update');
-            Route::delete('/faq/{faqItem}', [FaqSectionController::class, 'destroy'])->name('faq.destroy');
+            Route::delete('/faq/{faqItem}', [FaqSectionController::class, 'destroy'])->name('faq.destroy')->middleware('permission:content.delete');
             Route::post('/cards', [CardsSectionController::class, 'store'])->name('cards.store');
             Route::put('/cards/{card}', [CardsSectionController::class, 'update'])->name('cards.update');
-            Route::delete('/cards/{card}', [CardsSectionController::class, 'destroy'])->name('cards.destroy');
+            Route::delete('/cards/{card}', [CardsSectionController::class, 'destroy'])->name('cards.destroy')->middleware('permission:content.delete');
         });
 
         Route::get('/media', function () {
@@ -172,13 +180,27 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
             }
         });
 
-        Route::post('/maintenance/optimize-clear', [MaintenanceController::class, 'optimizeClear'])->name('maintenance.optimize-clear');
-        Route::post('/maintenance/config-clear', [MaintenanceController::class, 'configClear'])->name('maintenance.config-clear');
-        Route::post('/maintenance/cache-clear', [MaintenanceController::class, 'cacheClear'])->name('maintenance.cache-clear');
-        Route::post('/maintenance/migrate', [MaintenanceController::class, 'migrate'])->name('maintenance.migrate');
-        Route::post('/maintenance/rollback', [MaintenanceController::class, 'rollback'])->name('maintenance.rollback');
-        Route::post('/maintenance/migrate-fresh', [MaintenanceController::class, 'migrateFresh'])->name('maintenance.migrate-fresh');
-        Route::post('/maintenance/seed', [MaintenanceController::class, 'seed'])->name('maintenance.seed');
+        Route::post('/maintenance/optimize-clear', [MaintenanceController::class, 'optimizeClear'])
+            ->middleware('permission:system.cache.clear')
+            ->name('maintenance.optimize-clear');
+        Route::post('/maintenance/config-clear', [MaintenanceController::class, 'configClear'])
+            ->middleware('permission:system.cache.clear')
+            ->name('maintenance.config-clear');
+        Route::post('/maintenance/cache-clear', [MaintenanceController::class, 'cacheClear'])
+            ->middleware('permission:system.cache.clear')
+            ->name('maintenance.cache-clear');
+        Route::post('/maintenance/migrate', [MaintenanceController::class, 'migrate'])
+            ->middleware('permission:system.database.migrate')
+            ->name('maintenance.migrate');
+        Route::post('/maintenance/rollback', [MaintenanceController::class, 'rollback'])
+            ->middleware('permission:system.database.migrate')
+            ->name('maintenance.rollback');
+        Route::post('/maintenance/migrate-fresh', [MaintenanceController::class, 'migrateFresh'])
+            ->middleware('permission:system.database.migrate')
+            ->name('maintenance.migrate-fresh');
+        Route::post('/maintenance/seed', [MaintenanceController::class, 'seed'])
+            ->middleware('permission:system.database.migrate')
+            ->name('maintenance.seed');
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
