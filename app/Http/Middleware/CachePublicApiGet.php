@@ -2,13 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicApiPath;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Caches successful GET responses for /api/public/* per X-Domain + path.
+ * Caches successful GET responses for /{site}/api/public/* (path includes tenant host).
  */
 class CachePublicApiGet
 {
@@ -60,19 +61,14 @@ class CachePublicApiGet
 
     private function isPublicApiPath(Request $request): bool
     {
-        $path = $request->path();
-
-        return $path === 'api/public' || str_starts_with($path, 'api/public/');
+        return PublicApiPath::matches($request);
     }
 
     private function cacheKey(Request $request): string
     {
-        $domain = strtolower(trim((string) $request->header('X-Domain', 'default')));
-        $domain = preg_replace('#:\d+$#', '', $domain) ?: 'default';
-
         $pathPart = $request->path().'?'.$request->getQueryString();
 
-        return 'public_api:v1:'.hash('sha256', $domain.'|'.$pathPart);
+        return 'public_api:v1:'.hash('sha256', $pathPart);
     }
 
     /**

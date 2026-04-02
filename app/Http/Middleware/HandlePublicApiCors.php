@@ -2,17 +2,17 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicApiPath;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * CORS for the unauthenticated JSON API under /api/public/* (React sites, many origins).
+ * CORS for the unauthenticated JSON API: /{site}/api/public/* (and legacy /api/public/*).
  *
  * Uses Access-Control-Allow-Origin: * because these routes do not use cookies or
  * credentialed fetch — so any frontend domain works without maintaining an allowlist.
- * Browsers still preflight when custom headers (e.g. X-Domain) are sent; we answer
- * OPTIONS here before the rest of the stack so proxies/config cache cannot break it.
+ * Browsers still preflight for cross-origin JSON; we answer OPTIONS before the stack.
  *
  * Do not add credentials: 'include' on the frontend for these calls, or * will fail.
  */
@@ -39,15 +39,9 @@ class HandlePublicApiCors
         return $response;
     }
 
-    /**
-     * Match Laravel path (e.g. api/public/pages), including behind reverse proxies
-     * where the path is still normalized to the app prefix.
-     */
     private function isPublicApiPath(Request $request): bool
     {
-        $path = $request->path();
-
-        return $path === 'api/public' || str_starts_with($path, 'api/public/');
+        return PublicApiPath::matches($request);
     }
 
     private function preflightResponse(Request $request): Response

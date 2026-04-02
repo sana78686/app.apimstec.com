@@ -12,12 +12,13 @@ use Symfony\Component\HttpFoundation\Response;
  * Switches the `tenant` database connection on each request.
  *
  * Registered on the `web` stack (after StartSession) so session('active_domain_id') is
- * available for the CMS. Registered on `api` for X-Domain on public frontend routes.
+ * available for the CMS. Registered on `api` for domain-in-URL public routes and X-Domain.
  *
  * Priority:
  *  1. Admin session → session('active_domain_id')
- *  2. Public API    → X-Domain header (e.g. compresspdf.id)
- *  3. Fallback      → env CMS_TENANT_* or DB_* (only before a domain is resolved)
+ *  2. Public API    → route parameter site_domain (e.g. /compresspdf.id/api/public/...)
+ *  3. Public API    → X-Domain header (legacy / tools)
+ *  4. Fallback      → env CMS_TENANT_* or DB_* (only before a domain is resolved)
  *
  * When a domain is resolved, `database.default` is set to `tenant` so CMS code never
  * accidentally hits the registry DB. User, Role, Permission, Domain models keep
@@ -47,7 +48,19 @@ class TenantMiddleware
                 return Domain::where('id', $domainId)->where('is_active', true)->first();
             }
 
-            // 2. X-Domain header (public API routes from React frontends)
+            // 2. Domain in URL: /{site_domain}/api/public/...
+            $route = $request->route();
+            if ($route && $route->hasParameter('site_domain')) {
+                $siteDomain = $route->parameter('site_domain');
+                if (is_string($siteDomain) && $siteDomain !== '') {
+                    $fromPath = $this->resolveDomainFromHostHeader($siteDomain);
+                    if ($fromPath) {
+                        return $fromPath;
+                    }
+                }
+            }
+
+            // 3. X-Domain header (legacy clients, curl, build tools)
             $header = $request->header('X-Domain');
             if ($header) {
                 return $this->resolveDomainFromHostHeader($header);

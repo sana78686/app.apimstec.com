@@ -3,7 +3,6 @@
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PageController;
-use App\Http\Controllers\PublicApiController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\Seo\BrokenLinksController;
 use App\Http\Controllers\Seo\IndexingController;
@@ -15,19 +14,7 @@ use App\Http\Controllers\Seo\UrlRedirectsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Public API for React frontend (no auth) – pages & blogs with SEO
-Route::prefix('public')->name('api.public.')->group(function () {
-    Route::get('pages', [PublicApiController::class, 'pages'])->name('pages');
-    Route::get('pages/{slug}', [PublicApiController::class, 'pageBySlug'])->name('pages.show');
-    Route::get('blogs', [PublicApiController::class, 'blogs'])->name('blogs');
-    Route::get('blogs/{slug}', [PublicApiController::class, 'blogBySlug'])->name('blogs.show');
-    Route::get('contact', [PublicApiController::class, 'contact'])->name('contact');
-    Route::post('contact/send', [PublicApiController::class, 'sendContact'])->name('contact.send');
-    Route::get('faq', [PublicApiController::class, 'faq'])->name('faq');
-    Route::get('home-cards', [PublicApiController::class, 'homeCards'])->name('home-cards');
-    Route::get('home-content', [PublicApiController::class, 'homeContent'])->name('home-content');
-    Route::get('legal/{slug}', [PublicApiController::class, 'legalPage'])->name('legal')->where('slug', 'terms|privacy-policy|disclaimer|about-us|cookie-policy');
-});
+// Public JSON API: routes/api-public-by-domain.php → /{site_domain}/api/public/...
 
 Route::middleware(['web', 'auth', 'verified', 'active.domain'])->group(function () {
     Route::middleware('permission:users.view')->prefix('users')->name('api.users.')->group(function () {

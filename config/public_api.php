@@ -4,10 +4,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Public JSON API response cache (GET /api/public/*)
+    | Public JSON API response cache (GET /{domain}/api/public/*)
     |--------------------------------------------------------------------------
     |
-    | Reduces tenant DB load for React frontends. Keys include X-Domain + path.
+    | Reduces tenant DB load for React frontends. Cache key is full request path.
     | Uses your default CACHE_STORE. For 20+ sites use CACHE_STORE=redis (see .env.example).
     | Run `php artisan cache:clear` after bulk CMS changes, or lower TTL.
     |
