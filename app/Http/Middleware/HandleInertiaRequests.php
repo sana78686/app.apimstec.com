@@ -6,7 +6,7 @@ use App\Models\Domain;
 use App\Support\ContentLocales;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Tightenco\Ziggy\Ziggy;
+use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {

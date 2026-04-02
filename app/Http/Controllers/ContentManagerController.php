@@ -23,6 +23,9 @@ class ContentManagerController extends Controller
     public const KEY_HOME_OG_IMAGE = 'home_og_image';
     public const KEY_HOME_META_ROBOTS = 'home_meta_robots';
     public const KEY_HOME_CANONICAL_URL = 'home_canonical_url';
+
+    /** Google Search Console verification meta, gtag/GTM snippets, etc. — injected into React app <head>. */
+    public const KEY_HOME_FRONTEND_HEAD_SNIPPET = 'home_frontend_head_snippet';
     public const KEY_CONTACT_EMAIL = 'contact_email';
     public const KEY_CONTACT_PHONE = 'contact_phone';
     public const KEY_CONTACT_ADDRESS = 'contact_address';
@@ -65,6 +68,7 @@ class ContentManagerController extends Controller
             'homeOgImage' => ContentManagerSetting::get(self::KEY_HOME_OG_IMAGE, ''),
             'homeMetaRobots' => ContentManagerSetting::get(self::KEY_HOME_META_ROBOTS, 'index,follow'),
             'homeCanonicalUrl' => ContentManagerSetting::get(self::KEY_HOME_CANONICAL_URL, ''),
+            'homeFrontendHeadSnippet' => ContentManagerSetting::get(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -84,6 +88,7 @@ class ContentManagerController extends Controller
                 'index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow',
             ])],
             'canonical_url'    => 'nullable|string|max:500',
+            'frontend_head_snippet' => 'nullable|string|max:65535',
         ]);
 
         ContentManagerSetting::set(self::KEY_HOME_META_TITLE,       $validated['meta_title']       ?? '');
@@ -95,6 +100,7 @@ class ContentManagerController extends Controller
         ContentManagerSetting::set(self::KEY_HOME_OG_IMAGE,         $validated['og_image']         ?? '');
         ContentManagerSetting::set(self::KEY_HOME_META_ROBOTS,      $validated['meta_robots']      ?? 'index,follow');
         ContentManagerSetting::set(self::KEY_HOME_CANONICAL_URL,    $validated['canonical_url']    ?? '');
+        ContentManagerSetting::set(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $validated['frontend_head_snippet'] ?? '');
 
         return back()->with('success', 'Home page meta tags & SEO saved.');
     }

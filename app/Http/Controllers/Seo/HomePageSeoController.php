@@ -22,6 +22,7 @@ class HomePageSeoController extends Controller
             'ogImage'        => ContentManagerSetting::get(ContentManagerController::KEY_HOME_OG_IMAGE, ''),
             'metaRobots'     => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_ROBOTS, 'index,follow'),
             'canonicalUrl'   => ContentManagerSetting::get(ContentManagerController::KEY_HOME_CANONICAL_URL, ''),
+            'frontendHeadSnippet' => ContentManagerSetting::get(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
             'flash'          => ['success' => session('success')],
         ]);
     }

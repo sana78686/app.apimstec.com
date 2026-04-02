@@ -243,6 +243,7 @@ class PublicApiController extends Controller
             'og_image'         => ContentManagerSetting::get(ContentManagerController::KEY_HOME_OG_IMAGE, ''),
             'meta_robots'      => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_ROBOTS, 'index,follow'),
             'canonical_url'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_CANONICAL_URL, ''),
+            'head_snippet'     => ContentManagerSetting::get(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
         ]);
     }
 

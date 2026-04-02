@@ -15,6 +15,7 @@ const props = defineProps({
   ogImage:         { type: String, default: '' },
   metaRobots:      { type: String, default: 'index,follow' },
   canonicalUrl:    { type: String, default: '' },
+  frontendHeadSnippet: { type: String, default: '' },
   flash:           { type: Object, default: () => ({}) },
 });
 
@@ -28,6 +29,7 @@ const form = useForm({
   og_image:         props.ogImage,
   meta_robots:      props.metaRobots || 'index,follow',
   canonical_url:    props.canonicalUrl,
+  frontend_head_snippet: props.frontendHeadSnippet,
 });
 
 watch(() => props.metaTitle,       (v) => { form.meta_title       = v ?? ''; });
@@ -39,6 +41,7 @@ watch(() => props.ogDescription,   (v) => { form.og_description   = v ?? ''; });
 watch(() => props.ogImage,         (v) => { form.og_image         = v ?? ''; });
 watch(() => props.metaRobots,      (v) => { form.meta_robots      = v ?? 'index,follow'; });
 watch(() => props.canonicalUrl,    (v) => { form.canonical_url    = v ?? ''; });
+watch(() => props.frontendHeadSnippet, (v) => { form.frontend_head_snippet = v ?? ''; });
 
 function submit() {
   form.clearErrors();
@@ -95,6 +98,28 @@ const descLen  = () => form.meta_description.length;
           />
           <div class="form-text">Only set if this page has a duplicate at another URL.</div>
           <InputError :message="form.errors.canonical_url" />
+        </div>
+      </div>
+
+      <!-- Frontend head snippet (GSC, Analytics) -->
+      <div class="admin-box admin-box-smooth mb-4">
+        <h2 class="h6 mb-1">Frontend &lt;head&gt; snippet</h2>
+        <p class="text-muted small mb-3">
+          Injected into the public React app’s <code>&lt;head&gt;</code> on every page load. Use for
+          Google Search Console verification (<code>meta name="google-site-verification"</code>),
+          Google Tag Manager, or gtag. Paste complete tags as provided by Google (one or more lines).
+        </p>
+        <div class="mb-0">
+          <label class="form-label small fw-semibold">HTML / scripts for <code>&lt;head&gt;</code></label>
+          <textarea
+            v-model="form.frontend_head_snippet"
+            class="form-control form-control-sm font-monospace"
+            rows="8"
+            spellcheck="false"
+            placeholder='&lt;meta name="google-site-verification" content="…" /&gt;'
+          ></textarea>
+          <div class="form-text">Third-party scripts can affect Lighthouse Performance scores.</div>
+          <InputError :message="form.errors.frontend_head_snippet" />
         </div>
       </div>
 

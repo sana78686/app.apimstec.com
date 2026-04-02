@@ -17,6 +17,7 @@ const props = defineProps({
   homeOgImage: { type: String, default: '' },
   homeMetaRobots: { type: String, default: 'index,follow' },
   homeCanonicalUrl: { type: String, default: '' },
+  homeFrontendHeadSnippet: { type: String, default: '' },
   flash: { type: Object, default: () => ({}) },
 });
 
@@ -34,6 +35,7 @@ const seoForm = useForm({
   og_image:         props.homeOgImage,
   meta_robots:      props.homeMetaRobots || 'index,follow',
   canonical_url:    props.homeCanonicalUrl,
+  frontend_head_snippet: props.homeFrontendHeadSnippet,
 });
 
 watch(() => props.homePageContent, (val) => {
@@ -48,6 +50,7 @@ watch(() => props.homeOgDescription, (val) => { seoForm.og_description = val ?? 
 watch(() => props.homeOgImage, (val) => { seoForm.og_image = val ?? ''; });
 watch(() => props.homeMetaRobots, (val) => { seoForm.meta_robots = val ?? 'index,follow'; });
 watch(() => props.homeCanonicalUrl, (val) => { seoForm.canonical_url = val ?? ''; });
+watch(() => props.homeFrontendHeadSnippet, (val) => { seoForm.frontend_head_snippet = val ?? ''; });
 
 function submit() {
   form.clearErrors();
@@ -141,6 +144,18 @@ function submitSeo() {
           <label class="form-label small fw-semibold">Canonical URL</label>
           <input v-model="seoForm.canonical_url" type="text" class="form-control form-control-sm" placeholder="https://compresspdf.id/ (leave blank to auto-set)" maxlength="500" />
           <InputError :message="seoForm.errors.canonical_url" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Frontend <code>&lt;head&gt;</code> snippet (GSC, gtag, GTM)</label>
+          <textarea
+            v-model="seoForm.frontend_head_snippet"
+            class="form-control form-control-sm font-monospace"
+            rows="6"
+            spellcheck="false"
+            placeholder="Paste verification meta or analytics scripts for the public site"
+          ></textarea>
+          <div class="form-text small text-muted">Same field as SEO → Home Page → Frontend head snippet.</div>
+          <InputError :message="seoForm.errors.frontend_head_snippet" />
         </div>
         <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="seoForm.processing" @click="submitSeo">
           Save meta tags &amp; SEO
