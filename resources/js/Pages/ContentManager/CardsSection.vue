@@ -95,7 +95,7 @@ function submitAdd() {
 
 function submitEdit() {
   if (!editingId.value) return;
-  editForm.put(route('content-manager.cards.update', editingId.value), {
+  editForm.put(route('content-manager.cards.update', { card: editingId.value }), {
     preserveScroll: true,
     onSuccess: () => {
       closeEdit();
@@ -105,7 +105,7 @@ function submitEdit() {
 
 function remove(card) {
   if (!confirm('Remove this card?')) return;
-  router.delete(route('content-manager.cards.destroy', card.id), { preserveScroll: true });
+  router.delete(route('content-manager.cards.destroy', { card: card.id }), { preserveScroll: true });
 }
 
 function iconLabel(iconKey) {

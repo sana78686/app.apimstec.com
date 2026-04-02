@@ -166,7 +166,7 @@ const currentUserId = computed(() => page.props.auth?.user?.id);
                 <span v-if="!u.roles?.length" class="admin-text-muted">—</span>
               </td>
               <td v-if="canEdit || canDelete">
-                <Link v-if="canEdit" :href="route('users.edit', u.id)" class="admin-list-link">Edit</Link>
+                <Link v-if="canEdit" :href="route('users.edit', { user: u.id })" class="admin-list-link">Edit</Link>
                 <button
                   v-if="u.id !== currentUserId && canDelete"
                   type="button"

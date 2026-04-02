@@ -64,7 +64,7 @@ class UserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'roles' => 'required|array|min:1',
-            'roles.*' => 'exists:roles,id',
+            'roles.*' => 'exists:mysql.roles,id',
         ], [
             'roles.required' => 'The user must have at least one role.',
             'roles.min' => 'The user must have at least one role.',
@@ -114,10 +114,10 @@ class UserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|'.Rule::unique('users', 'email')->ignore($user->id),
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'roles' => 'required|array|min:1',
-            'roles.*' => 'exists:roles,id',
+            'roles.*' => 'exists:mysql.roles,id',
         ], [
             'roles.required' => 'The user must have at least one role.',
             'roles.min' => 'The user must have at least one role.',

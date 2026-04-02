@@ -267,4 +267,31 @@ class PublicApiController extends Controller
             'content' => $content,
         ]);
     }
+
+    /**
+     * Which legal pages have non-empty body text (for footer links). No auth.
+     *
+     * @return JsonResponse{legal: array<string, bool>}
+     */
+    public function legalNav(Request $request): JsonResponse
+    {
+        $map = ContentManagerController::legalPageMap();
+        $legal = [];
+        foreach ($map as $slug => [$key]) {
+            $content = ContentManagerSetting::get($key, '');
+            $legal[$slug] = self::legalSettingHasBody($content);
+        }
+
+        return response()->json(['legal' => $legal]);
+    }
+
+    private static function legalSettingHasBody(?string $html): bool
+    {
+        if ($html === null || $html === '') {
+            return false;
+        }
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags($html)) ?? '');
+
+        return $text !== '';
+    }
 }

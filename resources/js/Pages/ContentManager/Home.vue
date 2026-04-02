@@ -77,14 +77,14 @@ function submitFaqAdd() {
 }
 function submitFaqEdit() {
   if (!faqEditingId.value) return;
-  faqEditForm.put(route('content-manager.faq.update', faqEditingId.value), {
+  faqEditForm.put(route('content-manager.faq.update', { faqItem: faqEditingId.value }), {
     preserveScroll: true,
     onSuccess: () => closeFaqEdit(),
   });
 }
 function removeFaq(item) {
   if (!confirm('Remove this FAQ?')) return;
-  router.delete(route('content-manager.faq.destroy', item.id), { preserveScroll: true });
+  router.delete(route('content-manager.faq.destroy', { faqItem: item.id }), { preserveScroll: true });
 }
 
 // Cards
@@ -120,14 +120,14 @@ function submitCardAdd() {
 }
 function submitCardEdit() {
   if (!cardEditingId.value) return;
-  cardEditForm.put(route('content-manager.cards.update', cardEditingId.value), {
+  cardEditForm.put(route('content-manager.cards.update', { card: cardEditingId.value }), {
     preserveScroll: true,
     onSuccess: () => closeCardEdit(),
   });
 }
 function removeCard(card) {
   if (!confirm('Remove this card?')) return;
-  router.delete(route('content-manager.cards.destroy', card.id), { preserveScroll: true });
+  router.delete(route('content-manager.cards.destroy', { card: card.id }), { preserveScroll: true });
 }
 function iconEmoji(key) {
   return ICON_EMOJI[key] ?? '❓';

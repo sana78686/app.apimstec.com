@@ -45,22 +45,24 @@ class CardsSectionController extends Controller
         return redirect()->route('content-manager.cards')->with('success', 'Card added.');
     }
 
-    public function update(Request $request, HomeCard $card): RedirectResponse
+    public function update(Request $request, string $card): RedirectResponse
     {
+        $model = HomeCard::findOrFail($card);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'icon' => 'nullable|string|max:64',
         ]);
 
-        $card->update($validated);
+        $model->update($validated);
 
         return redirect()->route('content-manager.cards')->with('success', 'Card updated.');
     }
 
-    public function destroy(HomeCard $card): RedirectResponse
+    public function destroy(string $card): RedirectResponse
     {
-        $card->delete();
+        HomeCard::findOrFail($card)->delete();
 
         return redirect()->route('content-manager.cards')->with('success', 'Card removed.');
     }

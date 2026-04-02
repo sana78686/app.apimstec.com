@@ -170,7 +170,7 @@ const canDelete = computed(() => {
               <td>{{ r.users_count }}</td>
               <td>{{ r.permissions?.length ?? 0 }} permissions</td>
               <td v-if="canEdit || canDelete">
-                <Link v-if="!r.is_system && canEdit" :href="route('roles.edit', r.id)" class="admin-list-link">Edit</Link>
+                <Link v-if="!r.is_system && canEdit" :href="route('roles.edit', { role: r.id })" class="admin-list-link">Edit</Link>
                 <button
                   v-if="!r.is_system && canDelete"
                   type="button"

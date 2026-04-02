@@ -57,7 +57,7 @@ class RoleController extends Controller
             ],
             'description' => 'nullable|string|max:500',
             'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id',
+            'permissions.*' => 'exists:mysql.permissions,id',
         ]);
 
         $role = Role::create([
@@ -115,7 +115,7 @@ class RoleController extends Controller
             ],
             'description' => 'nullable|string|max:500',
             'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id',
+            'permissions.*' => 'exists:mysql.permissions,id',
         ]);
 
         $role->update([

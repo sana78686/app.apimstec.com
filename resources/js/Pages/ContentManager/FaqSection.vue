@@ -58,7 +58,7 @@ function submitAdd() {
 
 function submitEdit() {
   if (!editingId.value) return;
-  editForm.put(route('content-manager.faq.update', editingId.value), {
+  editForm.put(route('content-manager.faq.update', { faqItem: editingId.value }), {
     preserveScroll: true,
     onSuccess: () => {
       closeEdit();
@@ -68,7 +68,7 @@ function submitEdit() {
 
 function remove(item) {
   if (!confirm('Remove this FAQ?')) return;
-  router.delete(route('content-manager.faq.destroy', item.id), { preserveScroll: true });
+  router.delete(route('content-manager.faq.destroy', { faqItem: item.id }), { preserveScroll: true });
 }
 </script>
 
