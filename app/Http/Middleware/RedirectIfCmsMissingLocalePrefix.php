@@ -34,6 +34,12 @@ class RedirectIfCmsMissingLocalePrefix
             return $next($request);
         }
 
+        // Inertia pages call JSON routes at /api/* (axios). Those must NOT be prefixed with /{locale}/ —
+        // otherwise GET /api/roles becomes /en/api/roles and returns 404.
+        if (str_starts_with($path, 'api/')) {
+            return $next($request);
+        }
+
         $exemptExact = [
             'login',
             'logout',
