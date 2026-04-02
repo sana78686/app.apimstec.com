@@ -3,6 +3,10 @@
 /**
  * Public JSON API for React sites: /{site_domain}/api/public/...
  * site_domain matches CMS Domains.domain (e.g. compresspdf.id). Tenant is resolved from this segment.
+ *
+ * If the host returns 404 for these URLs, nginx may only pass /api/* to PHP — use the legacy
+ * routes in routes/api.php (GET /api/public/... + X-Domain) or set VITE_API_DOMAIN_PATH=false
+ * on the React build; the SPA also retries legacy automatically after 404/403 on this path.
  */
 
 use App\Http\Controllers\PublicApiController;
