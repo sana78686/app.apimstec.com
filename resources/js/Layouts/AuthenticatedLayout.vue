@@ -14,10 +14,11 @@ const page = usePage();
 const user          = computed(() => page.props.auth?.user ?? {});
 const domains       = computed(() => page.props.domains ?? []);
 const activeDomain  = computed(() => page.props.activeDomain ?? null);
-const cmsLocale     = computed(() => page.props.cmsLocale ?? 'en');
-const cmsLocales    = computed(() => page.props.cmsLocales ?? ['en', 'ms', 'es', 'fr', 'ar', 'ru']);
+const cmsLocale     = computed(() => page.props.cmsLocale ?? 'id');
+const cmsLocales    = computed(() => page.props.cmsLocales ?? ['id', 'en', 'ms', 'es', 'fr', 'ar', 'ru']);
 
 const cmsLocaleLabels = {
+  id: 'ID · Bahasa Indonesia',
   en: 'EN · English',
   ms: 'MS · Melayu',
   es: 'ES · Español',
@@ -29,7 +30,7 @@ const cmsLocaleLabels = {
 const showCmsLocaleSwitcher = computed(() => {
   if (!activeDomain.value) return false;
   const u = (page.url || '').replace(/^\//, '');
-  return /^(en|ms|es|fr|ar|ru)(\/|$)/.test(u);
+  return /^(id|en|ms|es|fr|ar|ru)(\/|$)/.test(u);
 });
 
 const cmsLangOpen = ref(false);
@@ -40,7 +41,7 @@ function visitCmsLocale(l) {
   const url = page.url || '';
   const [pathPart, query] = url.split('?');
   const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
-  const newPath = path.replace(/^\/(en|ms|es|fr|ar|ru)(?=\/|$)/, `/${l}`);
+  const newPath = path.replace(/^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/, `/${l}`);
   const target = newPath + (query ? `?${query}` : '');
   cmsLangOpen.value = false;
   router.visit(target, { preserveScroll: true });

@@ -4,9 +4,10 @@ namespace App\Support;
 
 class ContentLocales
 {
-    public const SUPPORTED = ['en', 'ms', 'es', 'fr', 'ar', 'ru'];
+    public const SUPPORTED = ['id', 'en', 'ms', 'es', 'fr', 'ar', 'ru'];
 
-    public const DEFAULT = 'en';
+    /** Primary market: compresspdf.id (Bahasa Indonesia). */
+    public const DEFAULT = 'id';
 
     public static function normalize(?string $locale): string
     {

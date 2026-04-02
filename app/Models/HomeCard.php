@@ -14,9 +14,13 @@ class HomeCard extends Model
         'sort_order' => 'integer',
     ];
 
-    public static function ordered(): \Illuminate\Database\Eloquent\Builder
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<HomeCard>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<HomeCard>
+     */
+    public function scopeOrdered(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
-        return static::orderBy('sort_order')->orderBy('id');
+        return $query->orderBy('sort_order')->orderBy('id');
     }
 
     /** Icon keys and labels for "Why use our PDF compressor" cards. Frontend maps keys to emoji/SVG. */

@@ -6,7 +6,7 @@ const props = defineProps({
   width: { type: Number, default: 20 },
 });
 
-const codes = { en: 'gb', ms: 'my', es: 'es', fr: 'fr', ar: 'sa', ru: 'ru' };
+const codes = { id: 'id', en: 'gb', ms: 'my', es: 'es', fr: 'fr', ar: 'sa', ru: 'ru' };
 
 const code = computed(() => codes[props.lang] || 'un');
 const height = computed(() => Math.round((props.width * 15) / 20));
