@@ -7,47 +7,41 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Ensures CORS works for the React app's public JSON API under /api/public/*.
+ * CORS for the unauthenticated JSON API under /api/public/* (React sites, many origins).
  *
- * Browsers send a preflight (OPTIONS) when custom headers like X-Domain are used.
- * If the default HandleCors path/origin check fails on the server (config cache,
- * reverse proxy path, etc.), this middleware still answers OPTIONS and adds ACAO on
- * the real response using the same rules as config/cors.php.
+ * Uses Access-Control-Allow-Origin: * because these routes do not use cookies or
+ * credentialed fetch — so any frontend domain works without maintaining an allowlist.
+ * Browsers still preflight when custom headers (e.g. X-Domain) are sent; we answer
+ * OPTIONS here before the rest of the stack so proxies/config cache cannot break it.
+ *
+ * Do not add credentials: 'include' on the frontend for these calls, or * will fail.
  */
 class HandlePublicApiCors
 {
+    private const PUBLIC_ALLOW_ORIGIN = '*';
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->isPublicApiPath($request)) {
             return $next($request);
         }
 
-        $origin = (string) $request->headers->get('Origin');
-        if ($origin === '') {
-            return $next($request);
-        }
-
-        if (! $this->isOriginAllowed($origin)) {
-            return $next($request);
-        }
-
         if ($request->isMethod('OPTIONS')) {
-            return $this->preflightResponse($request, $origin);
+            return $this->preflightResponse($request);
         }
 
         $response = $next($request);
 
         if (! $response->headers->has('Access-Control-Allow-Origin')) {
-            $response->headers->set('Access-Control-Allow-Origin', $origin);
-            $this->appendVary($response, 'Origin');
+            $response->headers->set('Access-Control-Allow-Origin', self::PUBLIC_ALLOW_ORIGIN);
         }
 
         return $response;
     }
 
     /**
-     * Match Laravel route path (e.g. api/public/pages). str_starts_with avoids edge cases
-     * where Request::is() patterns differ under some reverse-proxy setups.
+     * Match Laravel path (e.g. api/public/pages), including behind reverse proxies
+     * where the path is still normalized to the app prefix.
      */
     private function isPublicApiPath(Request $request): bool
     {
@@ -56,51 +50,22 @@ class HandlePublicApiCors
         return $path === 'api/public' || str_starts_with($path, 'api/public/');
     }
 
-    private function preflightResponse(Request $request, string $origin): Response
+    private function preflightResponse(Request $request): Response
     {
         $reqHeaders = (string) $request->headers->get('Access-Control-Request-Headers');
 
         $response = response('', 204);
-        $response->headers->set('Access-Control-Allow-Origin', $origin);
+        $response->headers->set('Access-Control-Allow-Origin', self::PUBLIC_ALLOW_ORIGIN);
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         $response->headers->set(
             'Access-Control-Allow-Headers',
-            $reqHeaders !== '' ? $reqHeaders : 'Accept, Content-Type, X-Domain, X-Requested-With'
+            $reqHeaders !== '' ? $reqHeaders : 'Accept, Content-Type, X-Domain, X-Requested-With, Authorization'
         );
         $maxAge = (int) (config('cors.max_age') ?? 0);
         if ($maxAge > 0) {
             $response->headers->set('Access-Control-Max-Age', (string) $maxAge);
         }
-        $response->headers->set('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
 
         return $response;
-    }
-
-    private function isOriginAllowed(string $origin): bool
-    {
-        $origins = config('cors.allowed_origins', []);
-        if (in_array('*', $origins, true)) {
-            return true;
-        }
-        if (in_array($origin, $origins, true)) {
-            return true;
-        }
-        foreach (config('cors.allowed_origins_patterns', []) as $pattern) {
-            if ($pattern !== '' && @preg_match($pattern, $origin) === 1) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function appendVary(Response $response, string $header): void
-    {
-        $existing = $response->headers->get('Vary');
-        if ($existing === null || $existing === '') {
-            $response->headers->set('Vary', $header);
-        } elseif (stripos($existing, $header) === false) {
-            $response->headers->set('Vary', $existing.', '.$header);
-        }
     }
 }

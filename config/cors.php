@@ -1,18 +1,13 @@
 <?php
 
-$defaultOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5000',
-    'http://127.0.0.1:3000',
-    'http://compresspdf.id',
-    'https://compresspdf.id',
-    'http://www.compresspdf.id',
-    'https://www.compresspdf.id',
-];
-
-$fromEnv = array_filter(array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))));
+/**
+ * Runtime: allowed_origins is merged in App\Providers\CorsServiceProvider from:
+ *   - local_dev_origins (Vite / local tools)
+ *   - active Domains table (domain + frontend_url) on mysql connection, cached
+ *   - env_origins (CORS_ALLOWED_ORIGINS)
+ *
+ * Set CACHE_STORE=redis and CORS_ORIGINS_CACHE_TTL for many sites.
+ */
 
 return [
 
@@ -20,14 +15,26 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_unique(array_filter(array_merge($defaultOrigins, $fromEnv)))),
+    /** Filled at boot — see CorsServiceProvider */
+    'allowed_origins' => [],
 
-    /*
-     * Case / subdomain tolerant (browsers send Origin exactly; list above must match).
-     * Also covers staging like https://staging.compresspdf.id when you add DNS.
-     */
+    'local_dev_origins' => [
+        'http://localhost:5173',
+        'http://localhost:5000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5000',
+        'http://127.0.0.1:3000',
+    ],
+
+    'env_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))
+    ))),
+
+    /** How long the domain-derived origin list is cached (Redis recommended). */
+    'origins_cache_ttl_seconds' => (int) env('CORS_ORIGINS_CACHE_TTL', 3600),
+
     'allowed_origins_patterns' => [
-        '#^https?://([a-z0-9-]+\.)*compresspdf\.id(?::\d+)?$#i',
         '#^https?://localhost(?::\d+)?$#i',
         '#^https?://127\.0\.0\.1(?::\d+)?$#i',
     ],

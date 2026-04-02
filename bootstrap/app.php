@@ -27,9 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Public API (no session): resolve tenant from X-Domain header.
+        // Public API (no session): resolve tenant from X-Domain header, then cache GET /api/public/*.
         $middleware->api(append: [
             \App\Http\Middleware\TenantMiddleware::class,
+            \App\Http\Middleware\CachePublicApiGet::class,
         ]);
 
         $middleware->alias([
