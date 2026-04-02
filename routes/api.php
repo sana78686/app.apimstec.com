@@ -3,6 +3,7 @@
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PublicApiController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\Seo\BrokenLinksController;
 use App\Http\Controllers\Seo\IndexingController;
@@ -14,7 +15,23 @@ use App\Http\Controllers\Seo\UrlRedirectsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Public JSON API: routes/api-public-by-domain.php → /{site_domain}/api/public/...
+// Public JSON API (primary): routes/api-public-by-domain.php → /{site_domain}/api/public/...
+//
+// Legacy fallback: /api/public/* + X-Domain — use if a WAF/proxy blocks dotted first path segments
+// (403 + “no CORS header” in the browser). Named api.legacy.public.* to avoid clashing with api.public.*.
+
+Route::prefix('public')->name('api.legacy.public.')->group(function () {
+    Route::get('pages', [PublicApiController::class, 'pages'])->name('pages');
+    Route::get('pages/{slug}', [PublicApiController::class, 'pageBySlug'])->name('pages.show');
+    Route::get('blogs', [PublicApiController::class, 'blogs'])->name('blogs');
+    Route::get('blogs/{slug}', [PublicApiController::class, 'blogBySlug'])->name('blogs.show');
+    Route::get('contact', [PublicApiController::class, 'contact'])->name('contact');
+    Route::post('contact/send', [PublicApiController::class, 'sendContact'])->name('contact.send');
+    Route::get('faq', [PublicApiController::class, 'faq'])->name('faq');
+    Route::get('home-cards', [PublicApiController::class, 'homeCards'])->name('home-cards');
+    Route::get('home-content', [PublicApiController::class, 'homeContent'])->name('home-content');
+    Route::get('legal/{slug}', [PublicApiController::class, 'legalPage'])->name('legal')->where('slug', 'terms|privacy-policy|disclaimer|about-us|cookie-policy');
+});
 
 Route::middleware(['web', 'auth', 'verified', 'active.domain'])->group(function () {
     Route::middleware('permission:users.view')->prefix('users')->name('api.users.')->group(function () {

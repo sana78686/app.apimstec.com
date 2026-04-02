@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicApiPath;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +20,11 @@ class EnsureActiveDomain
         }
 
         if ($request->session()->get('active_domain_id')) {
+            return $next($request);
+        }
+
+        // Tenant is chosen from URL (/{domain}/api/public/...), not CMS session.
+        if (PublicApiPath::matches($request)) {
             return $next($request);
         }
 
