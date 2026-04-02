@@ -5,17 +5,23 @@ namespace App\Http\Middleware;
 use App\Models\Redirect;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApplyRedirects
 {
     /**
      * Apply 301 redirects from the redirects table (SEO URL manager).
-     * Only runs for GET/HEAD and non-admin, non-api paths.
+     * Only runs for GET/HEAD on paths that are not the Inertia CMS (admin) area.
      */
     public function handle(Request $request, Closure $next): Response
     {
         if (! in_array($request->method(), ['GET', 'HEAD'], true)) {
+            return $next($request);
+        }
+
+        // CMS sessions never use tenant URL redirects; avoids hitting tenant tables on routes like /domains.
+        if ($request->user()) {
             return $next($request);
         }
 
@@ -25,9 +31,19 @@ class ApplyRedirects
             || str_starts_with($path, 'blogs/') || str_starts_with($path, 'users/')
             || str_starts_with($path, 'roles/') || str_starts_with($path, 'media')
             || str_starts_with($path, 'content-manager') || str_starts_with($path, 'profile')
-            || str_starts_with($path, 'login') || str_starts_with($path, 'register')
-            || str_starts_with($path, 'password') || str_starts_with($path, 'email')
-            || str_starts_with($path, 'sanctum') || str_starts_with($path, '_')) {
+            || str_starts_with($path, 'domains') || str_starts_with($path, 'credentials')
+            || str_starts_with($path, 'maintenance/') || str_starts_with($path, 'login')
+            || str_starts_with($path, 'register') || str_starts_with($path, 'password')
+            || str_starts_with($path, 'email') || str_starts_with($path, 'sanctum')
+            || str_starts_with($path, '_')) {
+            return $next($request);
+        }
+
+        try {
+            if (! Schema::connection('tenant')->hasTable('redirects')) {
+                return $next($request);
+            }
+        } catch (\Throwable) {
             return $next($request);
         }
 

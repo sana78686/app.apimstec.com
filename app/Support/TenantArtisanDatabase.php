@@ -15,8 +15,10 @@ class TenantArtisanDatabase
     public const CONNECTION = 'tenant';
 
     /**
-     * Migrations for site content DBs only (pages, blogs, etc.).
-     * Central CMS migrations stay in database/migrations and use `php artisan migrate` on the master connection.
+     * Per-site DB: content (pages, blogs, redirects, …), domain_credentials, and a mirror of
+     * core Laravel / CMS tables (users, roles, cache, jobs, domains shape, …). The app still
+     * uses the `mysql` connection for real logins and the domain registry; run `php artisan migrate`
+     * on the master for that. See database/migrations/tenant/2025_01_01_000000_*.
      */
     public const TENANT_MIGRATIONS_PATH = 'database/migrations/tenant';
 
