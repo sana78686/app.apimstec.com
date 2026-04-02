@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Public React API: reliable CORS (incl. OPTIONS preflight for X-Domain) before the stack.
+        $middleware->prepend(\App\Http\Middleware\HandlePublicApiCors::class);
+
         // Tenant must run after StartSession on web — global prepend ran before session,
         // so session('active_domain_id') was empty and `tenant` fell back to master DB_*.
         $middleware->web(append: [

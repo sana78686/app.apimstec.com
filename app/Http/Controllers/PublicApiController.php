@@ -74,13 +74,12 @@ class PublicApiController extends Controller
         return response()->json(['message' => 'Message sent successfully.']);
     }
     /**
-     * List published pages for nav/sitemap (no auth).
-     * Returns roots and children with parent_id so the frontend can show children under parent links.
+     * List publicly visible pages for nav/sitemap (no auth).
+     * Uses visibility only — not is_published — so "visible" pages show on the React site.
      */
     public function pages(Request $request): JsonResponse
     {
-        $pages = Page::where('is_published', true)
-            ->where('visibility', Page::VISIBILITY_VISIBLE)
+        $pages = Page::where('visibility', Page::VISIBILITY_VISIBLE)
             ->orderByRaw('parent_id IS NULL DESC')
             ->orderBy('sort_order')
             ->orderBy('title')
@@ -101,13 +100,13 @@ class PublicApiController extends Controller
     }
 
     /**
-     * Get a single published page by slug with full content and SEO (no auth).
+     * Get a single page by slug with full content and SEO (no auth).
+     * Public access when visibility is visible (not gated on is_published).
      */
     public function pageBySlug(string $slug): JsonResponse
     {
         $page = Page::where('slug', $slug)
-            // ->where('is_published', true)
-            // ->where('visibility', Page::VISIBILITY_VISIBLE)
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
             ->first();
 
         if (! $page) {
