@@ -55,9 +55,10 @@ class HandleInertiaRequests extends Middleware
         );
 
         $ziggy = (new Ziggy)->toArray();
-        $ziggy['defaults'] = array_merge($ziggy['defaults'] ?? [], [
-            'cms_locale' => $cmsLocale,
-        ]);
+        $ziggy['defaults'] = array_merge(
+            (array) ($ziggy['defaults'] ?? []),
+            ['cms_locale' => $cmsLocale],
+        );
 
         return [
             ...parent::share($request),

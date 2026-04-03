@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\TenantMiddleware::class,
                 \Illuminate\Routing\Middleware\SubstituteBindings::class,
                 \App\Http\Middleware\ApplyRedirects::class,
+                \App\Http\Middleware\ApplyCmsLocaleToUrlGenerator::class,
                 \App\Http\Middleware\HandleInertiaRequests::class,
                 \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             ],
@@ -55,6 +56,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
             'active.domain' => \App\Http\Middleware\EnsureActiveDomain::class,
         ]);
+
+        // Ensure tenant DB is configured before implicit route model binding (Blog, Page, …).
+        $middleware->prependToPriorityList(
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\TenantMiddleware::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (NotFoundHttpException $e, Request $request) {
