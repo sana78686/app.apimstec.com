@@ -40,7 +40,7 @@ Route::get('/', function () {
         return redirect()->route('domains.select');
     }
 
-    $loc = ContentLocales::normalize(session('cms_locale'));
+    $loc = ContentLocales::normalize(session('cms_locale') ?? request()->cookie('cms_locale_pref'));
 
     return redirect("/{$loc}/dashboard");
 });
@@ -245,8 +245,10 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
         Route::prefix('pages')->name('pages.')->group(function () {
             Route::get('/', [PageController::class, 'index'])->name('index');
             Route::get('/create', [PageController::class, 'create'])->name('create');
-            Route::get('/{page}/seo', fn ($page) => redirect()->route('seo.meta-manager.create', ['page_id' => is_object($page) ? $page->id : $page]))->name('seo');
-            Route::get('/{page}/edit', [PageController::class, 'edit'])->name('edit');
+            Route::get('/{page}/seo', fn (int|string $page) => redirect()->route('seo.meta-manager.create', ['page_id' => (int) $page]))
+                ->whereNumber('page')
+                ->name('seo');
+            Route::get('/{page}/edit', [PageController::class, 'edit'])->whereNumber('page')->name('edit');
         });
 
         Route::prefix('blogs')->name('blogs.')->group(function () {

@@ -96,7 +96,9 @@ class RedirectIfCmsMissingLocalePrefix
             return $next($request);
         }
 
-        $locale = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $locale = ContentLocales::normalize(
+            $request->session()->get('cms_locale') ?? $request->cookie('cms_locale_pref')
+        );
         $qs = $request->getQueryString();
         $target = '/'.$locale.'/'.$path.($qs ? '?'.$qs : '');
 

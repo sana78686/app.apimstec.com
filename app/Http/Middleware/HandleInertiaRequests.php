@@ -51,7 +51,9 @@ class HandleInertiaRequests extends Middleware
         }
 
         $cmsLocale = ContentLocales::normalize(
-            $request->route('cms_locale') ?? $request->session()->get('cms_locale')
+            $request->route('cms_locale')
+                ?? $request->session()->get('cms_locale')
+                ?? $request->cookie('cms_locale_pref')
         );
 
         $ziggy = (new Ziggy)->toArray();

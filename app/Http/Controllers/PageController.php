@@ -19,6 +19,15 @@ class PageController extends Controller
         return ContentLocales::normalize($request->session()->get('cms_locale'));
     }
 
+    /**
+     * Accept either a resolved Page (implicit binding) or raw id from the route.
+     * Avoids TypeError when binding passes a string before tenant DB is used consistently.
+     */
+    private function resolvePage(mixed $page): Page
+    {
+        return $page instanceof Page ? $page : Page::query()->findOrFail((int) $page);
+    }
+
     private function pageToArray(Page $page): array
     {
         return [
@@ -110,8 +119,9 @@ class PageController extends Controller
         return redirect()->route('pages.index')->with('success', 'created');
     }
 
-    public function edit(Page $page): Response|JsonResponse
+    public function edit(mixed $page): Response|JsonResponse
     {
+        $page = $this->resolvePage($page);
         $page->load(['children' => fn ($q) => $q->where('locale', $page->locale)]);
         $parents = Page::whereNull('parent_id')
             ->where('locale', $page->locale)
@@ -130,8 +140,9 @@ class PageController extends Controller
         return Inertia::render('Pages/Edit', $payload);
     }
 
-    public function update(Request $request, Page $page): RedirectResponse|JsonResponse
+    public function update(Request $request, mixed $page): RedirectResponse|JsonResponse
     {
+        $page = $this->resolvePage($page);
         $request->validate([
             'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
@@ -172,8 +183,9 @@ class PageController extends Controller
         return redirect()->route('pages.index')->with('success', 'updated');
     }
 
-    public function destroy(Page $page): RedirectResponse|JsonResponse
+    public function destroy(mixed $page): RedirectResponse|JsonResponse
     {
+        $page = $this->resolvePage($page);
         if ($page->children()->where('locale', $page->locale)->exists()) {
             if (request()->is('api/*')) {
                 return response()->json(['message' => 'Cannot delete a page that has children.'], 422);
@@ -188,8 +200,9 @@ class PageController extends Controller
     }
 
     /** Quick status update from the pages list (PATCH /api/pages/{id}/status). */
-    public function updateStatus(Request $request, Page $page): JsonResponse
+    public function updateStatus(Request $request, mixed $page): JsonResponse
     {
+        $page = $this->resolvePage($page);
         $request->validate([
             'visibility' => ['required', 'string', Rule::in(['draft', 'visible', 'disabled'])],
         ]);
@@ -206,8 +219,9 @@ class PageController extends Controller
     }
 
     /** @deprecated Keep for backward compat; redirects to updateStatus. */
-    public function togglePublish(Page $page): JsonResponse
+    public function togglePublish(mixed $page): JsonResponse
     {
+        $page = $this->resolvePage($page);
         $page->visibility   = $page->visibility === Page::VISIBILITY_VISIBLE ? Page::VISIBILITY_DRAFT : Page::VISIBILITY_VISIBLE;
         $page->is_published = ($page->visibility === Page::VISIBILITY_VISIBLE);
         $page->meta_robots  = $page->metaRobotsForVisibility();
@@ -219,8 +233,9 @@ class PageController extends Controller
         ]);
     }
 
-    public function seo(Page $page): Response|JsonResponse
+    public function seo(mixed $page): Response|JsonResponse
     {
+        $page = $this->resolvePage($page);
         $payload = [
             'pageId' => $page->id,
             'pageTitle' => $page->title,
@@ -241,8 +256,9 @@ class PageController extends Controller
         return Inertia::render('Pages/Seo', $payload);
     }
 
-    public function updateSeo(Request $request, Page $page): RedirectResponse|JsonResponse
+    public function updateSeo(Request $request, mixed $page): RedirectResponse|JsonResponse
     {
+        $page = $this->resolvePage($page);
         $request->validate([
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',

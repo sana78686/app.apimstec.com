@@ -59,13 +59,13 @@ Route::middleware(['web', 'auth', 'verified', 'active.domain'])->group(function 
         Route::get('/', [PageController::class, 'index'])->name('index');
         Route::get('/create', [PageController::class, 'create'])->name('create');
         Route::post('/', [PageController::class, 'store'])->name('store');
-        Route::get('/{page}/edit', [PageController::class, 'edit'])->name('edit');
-        Route::get('/{page}/seo', [PageController::class, 'seo'])->name('seo');
-        Route::put('/{page}', [PageController::class, 'update'])->name('update');
-        Route::put('/{page}/seo', [PageController::class, 'updateSeo'])->name('update-seo');
-        Route::delete('/{page}', [PageController::class, 'destroy'])->name('destroy')->middleware('permission:content.delete');
-        Route::patch('/{page}/status', [PageController::class, 'updateStatus'])->name('update-status');
-        Route::post('/{page}/toggle-publish', [PageController::class, 'togglePublish'])->name('toggle-publish');
+        Route::get('/{page}/edit', [PageController::class, 'edit'])->whereNumber('page')->name('edit');
+        Route::get('/{page}/seo', [PageController::class, 'seo'])->whereNumber('page')->name('seo');
+        Route::put('/{page}', [PageController::class, 'update'])->whereNumber('page')->name('update');
+        Route::put('/{page}/seo', [PageController::class, 'updateSeo'])->whereNumber('page')->name('update-seo');
+        Route::delete('/{page}', [PageController::class, 'destroy'])->whereNumber('page')->name('destroy')->middleware('permission:content.delete');
+        Route::patch('/{page}/status', [PageController::class, 'updateStatus'])->whereNumber('page')->name('update-status');
+        Route::post('/{page}/toggle-publish', [PageController::class, 'togglePublish'])->whereNumber('page')->name('toggle-publish');
     });
 
     Route::prefix('blogs')->name('api.blogs.')->group(function () {
