@@ -6,41 +6,38 @@ import { computed } from 'vue';
 const model = defineModel({ type: String, default: '' });
 
 const props = defineProps({
-  /** `full` = blogs/pages; `home` = home page editor + Card button */
+  /** `full` = blogs/pages; `home` = same toolbar + Card block helper */
   variant: { type: String, default: 'full' },
   placeholder: { type: String, default: '' },
 });
 
-const fullToolbar = [
+function insertContentCard(quill) {
+  const range = quill.getSelection(true);
+  const idx = range ? range.index : Math.max(0, quill.getLength() - 1);
+  const html =
+    '<blockquote class="content-card"><p><strong>Card title</strong></p><p>Replace with your text.</p></blockquote>';
+  quill.clipboard.dangerouslyPasteHTML(idx, html);
+}
+
+/** Shared rows for blogs, pages, and home (home adds Card row below). */
+const fullToolbarRows = [
   ['bold', 'italic', 'underline', 'strike'],
   [{ header: [1, 2, 3, false] }],
   [{ list: 'ordered' }, { list: 'bullet' }],
   [{ indent: '-1' }, { indent: '+1' }],
   [{ align: [] }],
   ['blockquote', 'code-block'],
-  ['link', 'image'],
+  ['link', 'image', 'video'],
   ['clean'],
 ];
 
+const fullToolbar = fullToolbarRows;
+
 const homeToolbar = {
-  container: [
-    ['bold', 'italic', 'underline'],
-    [{ header: [1, 2, 3, false] }],
-    [{ list: 'ordered' }, { list: 'bullet' }],
-    [{ align: [] }],
-    ['blockquote'],
-    ['card'],
-    ['link'],
-    ['clean'],
-  ],
+  container: [...fullToolbarRows, ['card']],
   handlers: {
     card() {
-      const q = this.quill;
-      const range = q.getSelection(true);
-      const idx = range ? range.index : Math.max(0, q.getLength() - 1);
-      const html =
-        '<blockquote class="content-card"><p><strong>Card title</strong></p><p>Replace with your text.</p></blockquote>';
-      q.clipboard.dangerouslyPasteHTML(idx, html);
+      insertContentCard(this.quill);
     },
   },
 };

@@ -72,12 +72,25 @@ Route::middleware(['web', 'auth', 'verified', 'active.domain'])->group(function 
         Route::get('/', [BlogController::class, 'index'])->name('index');
         Route::get('/create', [BlogController::class, 'create'])->name('create');
         Route::post('/', [BlogController::class, 'store'])->name('store');
-        Route::get('/{blog}/edit', [BlogController::class, 'edit'])->name('edit');
-        Route::put('/{blog}', [BlogController::class, 'update'])->name('update');
-        Route::delete('/{blog}', [BlogController::class, 'destroy'])->name('destroy')->middleware('permission:content.delete');
-        Route::patch('/{blog}/status', [BlogController::class, 'updateStatus'])->name('update-status');
-        Route::post('/{blog}/toggle-publish', [BlogController::class, 'togglePublish'])->name('toggle-publish');
-        Route::patch('/{blog}/visibility', [BlogController::class, 'updateVisibility'])->name('update-visibility');
+        Route::get('/{blog}/edit', [BlogController::class, 'edit'])
+            ->whereNumber('blog')
+            ->name('edit');
+        Route::put('/{blog}', [BlogController::class, 'update'])
+            ->whereNumber('blog')
+            ->name('update');
+        Route::delete('/{blog}', [BlogController::class, 'destroy'])
+            ->whereNumber('blog')
+            ->middleware('permission:content.delete')
+            ->name('destroy');
+        Route::patch('/{blog}/status', [BlogController::class, 'updateStatus'])
+            ->whereNumber('blog')
+            ->name('update-status');
+        Route::post('/{blog}/toggle-publish', [BlogController::class, 'togglePublish'])
+            ->whereNumber('blog')
+            ->name('toggle-publish');
+        Route::patch('/{blog}/visibility', [BlogController::class, 'updateVisibility'])
+            ->whereNumber('blog')
+            ->name('update-visibility');
     });
 
     Route::prefix('seo/url-redirects')->name('api.seo.url-redirects.')->group(function () {

@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\Blog;
 use App\Models\Page;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -28,12 +27,9 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         /*
-         * Tenant-aware resolution for {blog} / {page} after TenantMiddleware + SubstituteBindings.
-         * Prevents TypeError when implicit binding would pass a raw id string into typed controllers.
+         * {page} explicit binding after tenant is active (avoids wrong-DB / 404 during SubstituteBindings).
+         * {blog} is left as a raw route value; BlogController uses mixed + resolveBlog() after the full stack.
          */
-        Route::bind('blog', function (string $value) {
-            return Blog::query()->findOrFail((int) $value);
-        });
         Route::bind('page', function (string $value) {
             return Page::query()->findOrFail((int) $value);
         });

@@ -23,13 +23,29 @@ class PublicApiController extends Controller
     }
 
     /**
+     * Inbox for the public contact form: CMS “Contact us” email, else CONTACT_FORM_MAIL_TO env.
+     */
+    private function contactFormMailTo(): string
+    {
+        $fromCms = trim((string) ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_EMAIL, ''));
+
+        if ($fromCms !== '') {
+            return $fromCms;
+        }
+
+        $fromEnv = trim((string) config('contact.form_mail_to'));
+
+        return $fromEnv !== '' ? $fromEnv : 'apimstecofficial@gmail.com';
+    }
+
+    /**
      * Contact details for the frontend contact page (no auth).
-     * The contact_email is where form submissions are sent (set in CMS Content Manager).
+     * Email/phone/address come from CMS Content Manager (tenant); email falls back to env.
      */
     public function contact(Request $request): JsonResponse
     {
         return response()->json([
-            'contact_email' => config('contact.form_mail_to'),
+            'contact_email' => $this->contactFormMailTo(),
             'contact_phone' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_PHONE, ''),
             'contact_address' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_ADDRESS, ''),
         ]);
@@ -48,7 +64,7 @@ class PublicApiController extends Controller
             'accepts_terms' => 'required|accepted',
         ]);
 
-        $toEmail = trim((string) config('contact.form_mail_to')) ?: 'apimstecofficial@gmail.com';
+        $toEmail = $this->contactFormMailTo();
         $siteName = (string) config('contact.public_site_name');
 
         $name = $validated['name'];

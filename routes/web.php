@@ -252,7 +252,9 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
         Route::prefix('blogs')->name('blogs.')->group(function () {
             Route::get('/', [BlogController::class, 'index'])->name('index');
             Route::get('/create', [BlogController::class, 'create'])->name('create');
-            Route::get('/{blog}/edit', [BlogController::class, 'edit'])->name('edit');
+            Route::get('/{blog}/edit', [BlogController::class, 'edit'])
+                ->whereNumber('blog')
+                ->name('edit');
         });
     });
 
