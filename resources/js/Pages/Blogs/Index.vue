@@ -15,7 +15,7 @@ const cmsLocale = computed(() => {
     const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
     if (m) return m[1];
   }
-  return 'id';
+  return 'en';
 });
 const blogs = ref([]);
 const loading = ref(true);
@@ -167,7 +167,7 @@ async function changeStatus(b, newVisibility) {
                 </select>
               </td>
               <td>
-                <Link :href="`/${cmsLocale}/blogs/${b.id}/edit`" class="admin-list-link">Edit</Link>
+                <Link :href="`/${cmsLocale}/blogs/edit/${b.id}`" class="admin-list-link">Edit</Link>
                 <button
                   type="button"
                   class="admin-list-link admin-list-link-danger"

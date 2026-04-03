@@ -39,7 +39,7 @@ function applyZiggyFromPage(page) {
         inferCmsLocaleFromUrl() ??
         page?.props?.ziggy?.defaults?.cms_locale ??
         globalThis.Ziggy?.defaults?.cms_locale ??
-        'id';
+        'en';
 
     const z = page?.props?.ziggy;
     if (z && typeof z === 'object') {

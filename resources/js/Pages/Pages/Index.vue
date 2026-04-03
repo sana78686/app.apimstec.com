@@ -16,7 +16,7 @@ const cmsLocale = computed(() => {
     const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
     if (m) return m[1];
   }
-  return 'id';
+  return 'en';
 });
 const pages = ref([]);
 const loading = ref(true);
@@ -206,7 +206,7 @@ async function destroy(p) {
                 </select>
               </td>
               <td>
-                <Link :href="`/${cmsLocale}/pages/${p.id}/edit`" class="admin-list-link">Edit</Link>
+                <Link :href="`/${cmsLocale}/pages/edit/${p.id}`" class="admin-list-link">Edit</Link>
                 <Link
                   :href="route('seo.meta-manager.create', { cms_locale: cmsLocale, page_id: p.id, locale: p.locale })"
                   class="admin-list-link"

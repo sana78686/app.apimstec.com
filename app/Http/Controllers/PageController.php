@@ -25,6 +25,8 @@ class PageController extends Controller
      */
     private function resolvePage(mixed $page): Page
     {
+        $this->reconnectTenantFromSession();
+
         return $page instanceof Page ? $page : Page::query()->findOrFail((int) $page);
     }
 
@@ -55,6 +57,7 @@ class PageController extends Controller
 
     public function index(): Response|JsonResponse
     {
+        $this->reconnectTenantFromSession();
         $loc = $this->cmsLocale(request());
         $pages = Page::with(['children' => fn ($q) => $q->where('locale', $loc)])
             ->whereNull('parent_id')
@@ -119,9 +122,9 @@ class PageController extends Controller
         return redirect()->route('pages.index')->with('success', 'created');
     }
 
-    public function edit(mixed $page): Response|JsonResponse
+    public function edit(mixed $cmsPage): Response|JsonResponse
     {
-        $page = $this->resolvePage($page);
+        $page = $this->resolvePage($cmsPage);
         $page->load(['children' => fn ($q) => $q->where('locale', $page->locale)]);
         $parents = Page::whereNull('parent_id')
             ->where('locale', $page->locale)

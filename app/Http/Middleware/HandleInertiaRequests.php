@@ -50,11 +50,7 @@ class HandleInertiaRequests extends Middleware
             // Domains table may not exist yet (migration pending) — fail gracefully
         }
 
-        $cmsLocale = ContentLocales::normalize(
-            $request->route('cms_locale')
-                ?? $request->session()->get('cms_locale')
-                ?? $request->cookie('cms_locale_pref')
-        );
+        $cmsLocale = ContentLocales::resolveCmsWorkspaceLocale($request);
 
         $ziggy = (new Ziggy)->toArray();
         $ziggy['defaults'] = array_merge(

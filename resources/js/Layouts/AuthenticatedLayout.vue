@@ -14,7 +14,7 @@ const page = usePage();
 const user          = computed(() => page.props.auth?.user ?? {});
 const domains       = computed(() => page.props.domains ?? []);
 const activeDomain  = computed(() => page.props.activeDomain ?? null);
-const cmsLocale     = computed(() => page.props.cmsLocale ?? 'id');
+const cmsLocale     = computed(() => page.props.cmsLocale ?? 'en');
 const cmsLocales    = computed(() => page.props.cmsLocales ?? ['id', 'en', 'ms', 'es', 'fr', 'ar', 'ru']);
 
 const cmsLocaleLabels = {

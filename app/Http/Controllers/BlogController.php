@@ -26,6 +26,8 @@ class BlogController extends Controller
      */
     private function resolveBlog(mixed $blog): Blog
     {
+        $this->reconnectTenantFromSession();
+
         return $blog instanceof Blog ? $blog : Blog::query()->findOrFail((int) $blog);
     }
 
@@ -59,6 +61,7 @@ class BlogController extends Controller
 
     public function index(): Response|JsonResponse
     {
+        $this->reconnectTenantFromSession();
         $loc = $this->cmsLocale(request());
         $blogs = Blog::with('author:id,name')
             ->where('locale', $loc)
@@ -139,9 +142,9 @@ class BlogController extends Controller
         return redirect()->route('blogs.index')->with('success', 'created');
     }
 
-    public function edit(mixed $blog): Response|JsonResponse
+    public function edit(mixed $cmsBlog): Response|JsonResponse
     {
-        $blog = $this->resolveBlog($blog);
+        $blog = $this->resolveBlog($cmsBlog);
         $payload = ['blogId' => $blog->id, 'blog' => $this->blogToArray($blog)];
         if (request()->is('api/*')) {
             return response()->json($payload);

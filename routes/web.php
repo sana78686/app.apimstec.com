@@ -40,7 +40,7 @@ Route::get('/', function () {
         return redirect()->route('domains.select');
     }
 
-    $loc = ContentLocales::normalize(session('cms_locale') ?? request()->cookie('cms_locale_pref'));
+    $loc = ContentLocales::resolveCmsWorkspaceLocale(request());
 
     return redirect("/{$loc}/dashboard");
 });
@@ -245,18 +245,24 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
         Route::prefix('pages')->name('pages.')->group(function () {
             Route::get('/', [PageController::class, 'index'])->name('index');
             Route::get('/create', [PageController::class, 'create'])->name('create');
+            // Prefer /pages/edit/{id} — avoids {page} segment name clashes with frameworks/proxies; canonical for Ziggy/Inertia.
+            Route::get('/edit/{cmsPage}', [PageController::class, 'edit'])->whereNumber('cmsPage')->name('edit');
+            // Legacy bookmark: /pages/1/edit → /pages/edit/1
+            Route::get('/{legacyPage}/edit', function (string $cms_locale, string $legacyPage) {
+                return redirect()->route('pages.edit', ['cms_locale' => $cms_locale, 'cmsPage' => $legacyPage], 302);
+            })->whereNumber('legacyPage')->name('edit.legacy');
             Route::get('/{page}/seo', fn (int|string $page) => redirect()->route('seo.meta-manager.create', ['page_id' => (int) $page]))
                 ->whereNumber('page')
                 ->name('seo');
-            Route::get('/{page}/edit', [PageController::class, 'edit'])->whereNumber('page')->name('edit');
         });
 
         Route::prefix('blogs')->name('blogs.')->group(function () {
             Route::get('/', [BlogController::class, 'index'])->name('index');
             Route::get('/create', [BlogController::class, 'create'])->name('create');
-            Route::get('/{blog}/edit', [BlogController::class, 'edit'])
-                ->whereNumber('blog')
-                ->name('edit');
+            Route::get('/edit/{cmsBlog}', [BlogController::class, 'edit'])->whereNumber('cmsBlog')->name('edit');
+            Route::get('/{legacyBlog}/edit', function (string $cms_locale, string $legacyBlog) {
+                return redirect()->route('blogs.edit', ['cms_locale' => $cms_locale, 'cmsBlog' => $legacyBlog], 302);
+            })->whereNumber('legacyBlog')->name('edit.legacy');
         });
     });
 
