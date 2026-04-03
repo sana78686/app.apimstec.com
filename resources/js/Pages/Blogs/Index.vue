@@ -4,7 +4,19 @@ import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
-const page = usePage();
+const CMS_LOCALE_PATH_RE = /^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/;
+
+const inertiaPage = usePage();
+
+const cmsLocale = computed(() => {
+  const fromProps = inertiaPage.props.cmsLocale;
+  if (fromProps) return fromProps;
+  if (typeof window !== 'undefined') {
+    const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
+    if (m) return m[1];
+  }
+  return 'id';
+});
 const blogs = ref([]);
 const loading = ref(true);
 const successMessage = ref('');
@@ -17,7 +29,8 @@ const filteredBlogs = computed(() => {
     (b) =>
       (b.title || '').toLowerCase().includes(q) ||
       (b.slug || '').toLowerCase().includes(q) ||
-      (b.excerpt || '').toLowerCase().includes(q)
+      (b.excerpt || '').toLowerCase().includes(q) ||
+      String(b.locale || '').toLowerCase().includes(q)
   );
 });
 
@@ -92,7 +105,7 @@ async function changeStatus(b, newVisibility) {
           <h1 class="admin-list-page-title">Blogs</h1>
           <p class="admin-list-page-desc">Blog posts and articles.</p>
         </div>
-        <Link :href="route('blogs.create')" class="admin-list-page-cta">
+        <Link :href="route('blogs.create', { cms_locale: cmsLocale })" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -125,6 +138,7 @@ async function changeStatus(b, newVisibility) {
           <thead>
             <tr>
               <th>Title</th>
+              <th>Locale</th>
               <th>Slug</th>
               <th>Author</th>
               <th>Published at</th>
@@ -135,6 +149,9 @@ async function changeStatus(b, newVisibility) {
           <tbody>
             <tr v-for="b in pagedBlogs" :key="b.id">
               <td>{{ b.title }}</td>
+              <td>
+                <span class="admin-list-badge text-bg-light text-uppercase" style="font-size: 0.65rem;">{{ b.locale || '—' }}</span>
+              </td>
               <td><code class="admin-list-code">{{ b.slug }}</code></td>
               <td>{{ b.author?.name ?? '—' }}</td>
               <td>{{ b.published_at ? new Date(b.published_at).toLocaleDateString() : '—' }}</td>
@@ -150,7 +167,7 @@ async function changeStatus(b, newVisibility) {
                 </select>
               </td>
               <td>
-                <Link :href="route('blogs.edit', { blog: b.id })" class="admin-list-link">Edit</Link>
+                <Link :href="`/${cmsLocale}/blogs/${b.id}/edit`" class="admin-list-link">Edit</Link>
                 <button
                   type="button"
                   class="admin-list-link admin-list-link-danger"

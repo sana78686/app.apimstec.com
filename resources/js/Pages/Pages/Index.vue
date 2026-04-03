@@ -4,7 +4,20 @@ import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
-const page = usePage();
+const CMS_LOCALE_PATH_RE = /^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/;
+
+const inertiaPage = usePage();
+
+/** Match URL segment so edit links never omit /{locale}/ (Ziggy can mis-resolve params named `page`). */
+const cmsLocale = computed(() => {
+  const fromProps = inertiaPage.props.cmsLocale;
+  if (fromProps) return fromProps;
+  if (typeof window !== 'undefined') {
+    const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
+    if (m) return m[1];
+  }
+  return 'id';
+});
 const pages = ref([]);
 const loading = ref(true);
 const successMessage = ref('');
@@ -32,7 +45,8 @@ const filteredPages = computed(() => {
   return flatPages.value.filter(
     (p) =>
       (p.title || '').toLowerCase().includes(q) ||
-      (p.slug || '').toLowerCase().includes(q)
+      (p.slug || '').toLowerCase().includes(q) ||
+      String(p.locale || '').toLowerCase().includes(q)
   );
 });
 
@@ -121,7 +135,7 @@ async function destroy(p) {
           <h1 class="admin-list-page-title">Pages</h1>
           <p class="admin-list-page-desc">Website pages for header/footer (e.g. FAQ, Contact us). Child pages appear under their parent on the frontend.</p>
         </div>
-        <Link :href="route('pages.create')" class="admin-list-page-cta">
+        <Link :href="route('pages.create', { cms_locale: cmsLocale })" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -154,6 +168,7 @@ async function destroy(p) {
           <thead>
             <tr>
               <th>Title</th>
+              <th>Locale</th>
               <th>Slug</th>
               <th>Parent</th>
               <th>Placement</th>
@@ -166,6 +181,9 @@ async function destroy(p) {
               <td :style="p._level ? { paddingLeft: (p._level * 1.25 + 0.5) + 'rem' } : {}">
                 <span v-if="p._level">↳</span>
                 {{ p.title }}
+              </td>
+              <td>
+                <span class="admin-list-badge text-bg-light text-uppercase" style="font-size: 0.65rem;">{{ p.locale || '—' }}</span>
               </td>
               <td><code class="admin-list-code">{{ p.slug }}</code></td>
               <td>
@@ -188,8 +206,13 @@ async function destroy(p) {
                 </select>
               </td>
               <td>
-                <Link :href="route('pages.edit', { page: p.id })" class="admin-list-link">Edit</Link>
-                <Link :href="route('seo.meta-manager.create', { page_id: p.id })" class="admin-list-link">Edit SEO</Link>
+                <Link :href="`/${cmsLocale}/pages/${p.id}/edit`" class="admin-list-link">Edit</Link>
+                <Link
+                  :href="route('seo.meta-manager.create', { cms_locale: cmsLocale, page_id: p.id, locale: p.locale })"
+                  class="admin-list-link"
+                >
+                  Edit SEO
+                </Link>
                 <button
                   v-if="!p.children?.length"
                   type="button"
