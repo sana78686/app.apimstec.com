@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
+import RichTextEditor from '@/Components/RichTextEditor.vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -45,6 +46,15 @@ const iconOptionsList = computed(() =>
 function truncate(str, len = 60) {
   if (!str || str.length <= len) return str;
   return str.slice(0, len) + '…';
+}
+
+function stripHtml(html) {
+  if (!html) return '';
+  return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function truncateAnswerPreview(html, len = 80) {
+  return truncate(stripHtml(html), len);
 }
 
 // FAQ
@@ -205,7 +215,7 @@ function iconLabel(key) {
                       <div class="d-flex flex-column gap-2">
                         <CmsLocaleSelect v-model="faqEditForm.locale" id="faq-edit-locale" :error="faqEditForm.errors.locale" />
                         <TextInput v-model="faqEditForm.question" class="form-control form-control-sm" placeholder="Question" />
-                        <textarea v-model="faqEditForm.answer" class="form-control form-control-sm" rows="2" placeholder="Answer"></textarea>
+                        <RichTextEditor v-model="faqEditForm.answer" />
                         <div class="d-flex gap-2">
                           <PrimaryButton type="button" class="btn btn-sm" :disabled="faqEditForm.processing" @click="submitFaqEdit">Save</PrimaryButton>
                           <SecondaryButton type="button" class="btn btn-sm btn-outline-secondary" @click="closeFaqEdit">Cancel</SecondaryButton>
@@ -216,7 +226,7 @@ function iconLabel(key) {
                   <template v-else>
                     <td><span class="badge text-bg-light text-uppercase">{{ item.locale }}</span></td>
                     <td>{{ item.question }}</td>
-                    <td><span class="admin-list-text-muted">{{ truncate(item.answer, 80) }}</span></td>
+                    <td><span class="admin-list-text-muted">{{ truncateAnswerPreview(item.answer, 80) }}</span></td>
                     <td>
                       <button type="button" class="admin-list-link" @click="openFaqEdit(item)">Edit</button>
                       <button type="button" class="admin-list-link admin-list-link-danger" @click="removeFaq(item)">Delete</button>
@@ -301,7 +311,7 @@ function iconLabel(key) {
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Answer</label>
-            <textarea v-model="faqAddForm.answer" class="form-control" rows="3" placeholder="Your answer…"></textarea>
+            <RichTextEditor v-model="faqAddForm.answer" />
             <InputError :message="faqAddForm.errors.answer" />
           </div>
           <div class="d-flex justify-content-end gap-2">

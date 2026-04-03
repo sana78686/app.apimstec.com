@@ -28,7 +28,7 @@ class FaqSectionController extends Controller
         $validated = $request->validate([
             'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'question' => 'required|string|max:500',
-            'answer' => 'required|string|max:2000',
+            'answer' => 'required|string|max:65535',
         ]);
 
         $loc = ContentLocales::normalize($validated['locale']);
@@ -50,7 +50,7 @@ class FaqSectionController extends Controller
         $validated = $request->validate([
             'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'question' => 'required|string|max:500',
-            'answer' => 'required|string|max:2000',
+            'answer' => 'required|string|max:65535',
         ]);
 
         $model->update([

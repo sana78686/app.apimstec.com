@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
+import RichTextEditor from '@/Components/RichTextEditor.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -78,6 +79,17 @@ function remove(item) {
   if (!confirm('Remove this FAQ?')) return;
   router.delete(route('content-manager.faq.destroy', { faqItem: item.id }), { preserveScroll: true });
 }
+
+function stripHtml(html) {
+  if (!html) return '';
+  return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function answerPreview(html, len = 120) {
+  const plain = stripHtml(html);
+  if (!plain || plain.length <= len) return plain;
+  return plain.slice(0, len) + '…';
+}
 </script>
 
 <template>
@@ -118,7 +130,7 @@ function remove(item) {
                 <span class="badge text-bg-light text-uppercase">{{ item.locale }}</span>
                 <span class="fw-semibold">{{ item.question }}</span>
               </div>
-              <div class="text-muted small mt-1">{{ item.answer }}</div>
+              <div class="text-muted small mt-1">{{ answerPreview(item.answer) }}</div>
             </div>
             <div v-else class="flex-grow-1">
               <div class="mb-2">
@@ -131,7 +143,7 @@ function remove(item) {
               </div>
               <div class="mb-2">
                 <label class="form-label small">Answer</label>
-                <textarea v-model="editForm.answer" class="form-control form-control-sm" rows="2"></textarea>
+                <RichTextEditor v-model="editForm.answer" />
                 <InputError :message="editForm.errors.answer" />
               </div>
               <div class="d-flex gap-2">
@@ -167,7 +179,7 @@ function remove(item) {
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Answer</label>
-            <textarea v-model="addForm.answer" class="form-control" rows="3" placeholder="Your answer…"></textarea>
+            <RichTextEditor v-model="addForm.answer" />
             <InputError :message="addForm.errors.answer" />
           </div>
           <div class="d-flex justify-content-end gap-2">
