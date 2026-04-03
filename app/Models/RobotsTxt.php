@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\File;
 
 class RobotsTxt extends Model
 {
@@ -19,36 +18,54 @@ class RobotsTxt extends Model
         return self::first();
     }
 
-    /** Get content for robots.txt. If empty, returns default with sitemap link. */
-    public static function getContent(): string
+    /**
+     * Get content for robots.txt. If empty, returns default with sitemap link.
+     *
+     * @param  string|null  $publicSiteBase  Public site origin (e.g. https://compresspdf.id). Falls back to APP_URL.
+     */
+    public static function getContent(?string $publicSiteBase = null): string
     {
+        $base = self::normalizePublicBase($publicSiteBase);
         $record = self::getRecord();
         $content = $record?->content;
         if ($content !== null && trim($content) !== '') {
-            return self::ensureSitemapInContent(trim($content));
+            return self::ensureSitemapInContent(trim($content), $base);
         }
-        return self::defaultContent();
+
+        return self::defaultContent($base);
     }
 
-    /** Default robots.txt: allow all, include sitemap link. */
-    public static function defaultContent(): string
+    /** Default robots.txt: allow all, include sitemap link on the public site. */
+    public static function defaultContent(?string $publicSiteBase = null): string
     {
-        $baseUrl = rtrim(config('app.url'), '/');
+        $baseUrl = self::normalizePublicBase($publicSiteBase);
+
         return "User-agent: *\nAllow: /\n\nSitemap: {$baseUrl}/sitemap.xml\n";
     }
 
     /** If content doesn't contain a Sitemap line, append the sitemap URL. */
-    public static function ensureSitemapInContent(string $content): string
+    public static function ensureSitemapInContent(string $content, ?string $publicSiteBase = null): string
     {
         if (stripos($content, 'Sitemap:') !== false) {
             return $content;
         }
-        $baseUrl = rtrim(config('app.url'), '/');
+        $baseUrl = self::normalizePublicBase($publicSiteBase);
         $sitemapLine = "\nSitemap: {$baseUrl}/sitemap.xml\n";
+
         return rtrim($content).$sitemapLine;
     }
 
-    /** Update the stored content (upsert the single row) and sync to public/robots.txt. */
+    private static function normalizePublicBase(?string $publicSiteBase): string
+    {
+        $t = $publicSiteBase !== null ? trim($publicSiteBase) : '';
+        if ($t !== '') {
+            return rtrim($t, '/');
+        }
+
+        return rtrim((string) config('app.url'), '/');
+    }
+
+    /** Update the stored content (upsert the single row). */
     public static function setContent(string $content): void
     {
         $record = self::getRecord();
@@ -57,13 +74,13 @@ class RobotsTxt extends Model
         } else {
             self::create(['content' => $content]);
         }
-        self::syncToFile();
+        // Multi-tenant: do not write public/robots.txt — many hosts serve that file as static HTML
+        // and ignore Laravel; crawlers must hit the dynamic route only.
     }
 
-    /** Write current robots.txt content to public/robots.txt so the physical file is in sync. */
+    /** @deprecated No-op: kept so old callers do not break. */
     public static function syncToFile(): void
     {
-        $path = public_path('robots.txt');
-        File::put($path, self::getContent());
+        //
     }
 }

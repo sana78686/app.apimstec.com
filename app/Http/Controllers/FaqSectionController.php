@@ -41,21 +41,23 @@ class FaqSectionController extends Controller
         return redirect()->route('content-manager.faq')->with('success', 'FAQ added.');
     }
 
-    public function update(Request $request, FaqItem $faqItem): RedirectResponse
+    public function update(Request $request, string $faqItem): RedirectResponse
     {
+        $model = FaqItem::findOrFail($faqItem);
+
         $validated = $request->validate([
             'question' => 'required|string|max:500',
             'answer' => 'required|string|max:2000',
         ]);
 
-        $faqItem->update($validated);
+        $model->update($validated);
 
         return redirect()->route('content-manager.faq')->with('success', 'FAQ updated.');
     }
 
-    public function destroy(FaqItem $faqItem): RedirectResponse
+    public function destroy(string $faqItem): RedirectResponse
     {
-        $faqItem->delete();
+        FaqItem::findOrFail($faqItem)->delete();
 
         return redirect()->route('content-manager.faq')->with('success', 'FAQ removed.');
     }

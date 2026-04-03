@@ -150,7 +150,7 @@ async function changeStatus(b, newVisibility) {
                 </select>
               </td>
               <td>
-                <Link :href="route('blogs.edit', b.id)" class="admin-list-link">Edit</Link>
+                <Link :href="route('blogs.edit', { blog: b.id })" class="admin-list-link">Edit</Link>
                 <button
                   type="button"
                   class="admin-list-link admin-list-link-danger"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
+use App\Models\Domain;
 use App\Models\RobotsTxt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,22 +17,33 @@ class RobotsManagerController extends Controller
      */
     public function index(): Response
     {
+        $domain = app()->bound('active_domain') ? app('active_domain') : null;
+        $publicBase = $domain instanceof Domain ? $domain->publicSiteBaseUrl() : '';
+        if ($publicBase === '') {
+            $publicBase = rtrim((string) config('app.url'), '/');
+        }
+
         $record = RobotsTxt::getRecord();
         $content = $record?->content;
         if ($content === null || trim($content) === '') {
-            $content = RobotsTxt::defaultContent();
+            $pub = $domain instanceof Domain ? $domain->publicSiteBaseUrl() : '';
+            $content = RobotsTxt::defaultContent($pub !== '' ? $pub : null);
         } else {
             $content = trim($content);
         }
 
-        $baseUrl = rtrim(config('app.url'), '/');
-        $robotsUrl = $baseUrl.'/robots.txt';
-        $sitemapUrl = $baseUrl.'/sitemap.xml';
+        $cmsHost = rtrim((string) config('app.url'), '/');
+        $robotsUrl = $publicBase.'/robots.txt';
+        $sitemapUrl = $publicBase.'/sitemap.xml';
+        $robotsUrlOnCmsHost = $domain instanceof Domain ? $cmsHost.'/'.$domain->domain.'/robots.txt' : null;
+        $sitemapUrlOnCmsHost = $domain instanceof Domain ? $cmsHost.'/'.$domain->domain.'/sitemap.xml' : null;
 
         return Inertia::render('Seo/Robots/Index', [
             'content' => $content,
             'robotsUrl' => $robotsUrl,
             'sitemapUrl' => $sitemapUrl,
+            'robotsUrlOnCmsHost' => $robotsUrlOnCmsHost,
+            'sitemapUrlOnCmsHost' => $sitemapUrlOnCmsHost,
         ]);
     }
 

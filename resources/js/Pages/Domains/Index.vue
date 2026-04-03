@@ -61,7 +61,7 @@ function syncSchema(domain) {
     `✓ Safe — only adds new tables/columns, no data is deleted.\n` +
     `(The CMS master database is never modified here.)`
   )) return;
-  router.post(route('domains.sync-schema', domain.id), {}, { preserveScroll: true });
+  router.post(route('domains.sync-schema', { domain: domain.id }), {}, { preserveScroll: true });
 }
 
 function rollbackSchema(domain) {
@@ -72,7 +72,7 @@ function rollbackSchema(domain) {
     `Site: "${domain.name}"\n\n` +
     `This will undo the most recent migration. Data in removed columns/tables may be lost.`
   )) return;
-  router.post(route('domains.rollback-schema', domain.id), {}, { preserveScroll: true });
+  router.post(route('domains.rollback-schema', { domain: domain.id }), {}, { preserveScroll: true });
 }
 
 function migrateFresh(domain) {
@@ -86,14 +86,14 @@ function migrateFresh(domain) {
     `(The CMS master database is not affected.)\n\n` +
     `Click OK only if you are 100% sure.`
   )) return;
-  router.post(route('domains.migrate-fresh', domain.id), {}, { preserveScroll: true });
+  router.post(route('domains.migrate-fresh', { domain: domain.id }), {}, { preserveScroll: true });
 }
 
 /* ── Test DB connection ── */
 async function testSavedConnection(domain) {
   testResults.value[domain.id] = { testing: true };
   try {
-    const res = await fetch(route('domains.test-saved-connection', domain.id), {
+    const res = await fetch(route('domains.test-saved-connection', { domain: domain.id }), {
       method: 'POST',
       headers: {
         'Accept':       'application/json',
@@ -112,7 +112,7 @@ function confirmDelete(domain) {
   if (!confirm(
     `Remove "${domain.name}" from this CMS?\n\nThe actual database is NOT deleted — only the connection record is removed.`
   )) return;
-  router.delete(route('domains.destroy', domain.id), { preserveScroll: true });
+  router.delete(route('domains.destroy', { domain: domain.id }), { preserveScroll: true });
 }
 </script>
 
@@ -304,7 +304,7 @@ function confirmDelete(domain) {
 
                     <!-- Edit -->
                     <Link
-                      :href="route('domains.edit', d.id)"
+                      :href="route('domains.edit', { domain: d.id })"
                       class="admin-list-link"
                       title="Edit credentials and domain settings"
                     >Edit</Link>

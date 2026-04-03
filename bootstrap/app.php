@@ -25,21 +25,31 @@ return Application::configure(basePath: dirname(__DIR__))
         // Public React API: reliable CORS (incl. OPTIONS preflight for X-Domain) before the stack.
         $middleware->prepend(\App\Http\Middleware\HandlePublicApiCors::class);
 
-        // Tenant must run after StartSession on web — global prepend ran before session,
-        // so session('active_domain_id') was empty and `tenant` fell back to master DB_*.
-        $middleware->web(append: [
-            \App\Http\Middleware\RedirectIfCmsMissingLocalePrefix::class,
-            \App\Http\Middleware\TenantMiddleware::class,
-            \App\Http\Middleware\ApplyRedirects::class,
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-        ]);
+        // Tenant must run after StartSession (session('active_domain_id')).
+        // Implicit route model binding (SubstituteBindings) must run AFTER TenantMiddleware so
+        // Page/Blog/FaqItem/etc. query the active site's DB — otherwise bindings fail and raw
+        // IDs hit type-hinted controllers (TypeError) or resolve the wrong row (404).
+        $middleware->web(
+            remove: [\Illuminate\Routing\Middleware\SubstituteBindings::class],
+            append: [
+                \App\Http\Middleware\RedirectIfCmsMissingLocalePrefix::class,
+                \App\Http\Middleware\TenantMiddleware::class,
+                \Illuminate\Routing\Middleware\SubstituteBindings::class,
+                \App\Http\Middleware\ApplyRedirects::class,
+                \App\Http\Middleware\HandleInertiaRequests::class,
+                \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            ],
+        );
 
         // Public API (no session): tenant from URL site_domain or X-Domain; cache GET /{site}/api/public/*.
-        $middleware->api(append: [
-            \App\Http\Middleware\TenantMiddleware::class,
-            \App\Http\Middleware\CachePublicApiGet::class,
-        ]);
+        $middleware->api(
+            remove: [\Illuminate\Routing\Middleware\SubstituteBindings::class],
+            append: [
+                \App\Http\Middleware\TenantMiddleware::class,
+                \Illuminate\Routing\Middleware\SubstituteBindings::class,
+                \App\Http\Middleware\CachePublicApiGet::class,
+            ],
+        );
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,

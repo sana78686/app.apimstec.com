@@ -188,7 +188,7 @@ async function destroy(p) {
                 </select>
               </td>
               <td>
-                <Link :href="route('pages.edit', p.id)" class="admin-list-link">Edit</Link>
+                <Link :href="route('pages.edit', { page: p.id })" class="admin-list-link">Edit</Link>
                 <Link :href="route('seo.meta-manager.create', { page_id: p.id })" class="admin-list-link">Edit SEO</Link>
                 <button
                   v-if="!p.children?.length"

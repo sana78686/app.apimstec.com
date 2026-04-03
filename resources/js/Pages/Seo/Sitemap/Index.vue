@@ -5,8 +5,10 @@ import { computed, ref } from 'vue';
 
 const props = defineProps({
   sitemapUrl: { type: String, default: '' },
+  sitemapUrlOnCmsHost: { type: String, default: '' },
   urls: { type: Array, default: () => [] },
   count: { type: Number, default: 0 },
+  domainNote: { type: String, default: null },
 });
 
 const searchQuery = ref('');
@@ -52,9 +54,11 @@ function openSitemap() {
         </div>
       </div>
 
-      <div class="admin-box admin-box-smooth mb-4">
-        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Sitemap URL</h2>
-        <p class="text-muted small mb-3">Submit this URL to Google Search Console and other search engines. The sitemap is generated on demand and always reflects current published content.</p>
+      <p v-if="domainNote" class="text-muted small border rounded p-3 mb-3 bg-light">{{ domainNote }}</p>
+
+      <div v-if="sitemapUrl" class="admin-box admin-box-smooth mb-4">
+        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Sitemap URL (live site)</h2>
+        <p class="text-muted small mb-3">Use this URL in Google Search Console for your public domain. Paths match your React app (<code class="admin-list-code">/{lang}/page/…</code>, <code class="admin-list-code">/{lang}/blog/…</code>). Only <strong>published</strong> and <strong>visible</strong> pages and posts are included.</p>
         <div class="d-flex flex-wrap align-items-center gap-2">
           <code class="admin-list-code admin-url-path-code flex-grow-1 p-2" style="min-width: 200px;">{{ sitemapUrl }}</code>
           <button
@@ -74,6 +78,10 @@ function openSitemap() {
             Open sitemap
           </button>
         </div>
+        <p v-if="sitemapUrlOnCmsHost" class="text-muted small mb-0 mt-3">
+          If <code class="admin-list-code">/sitemap.xml</code> on the live host does not reach this CMS, submit this same sitemap from the CMS server:
+          <code class="admin-list-code d-block mt-1">{{ sitemapUrlOnCmsHost }}</code>
+        </p>
       </div>
 
       <div class="admin-list-toolbar mb-3">
@@ -107,7 +115,7 @@ function openSitemap() {
             <tbody>
               <tr v-for="(u, i) in filteredUrls" :key="u.type + '-' + (u.id ?? i)">
                 <td class="admin-url-table-type">
-                  <span class="admin-list-badge">{{ u.type === 'blog' ? 'Blog' : 'Page' }}</span>
+                  <span class="admin-list-badge">{{ u.type === 'blog' ? 'Blog' : u.type === 'home' ? 'Home' : 'Page' }}</span>
                 </td>
                 <td class="admin-url-table-title">{{ u.title }}</td>
                 <td class="admin-url-table-path">

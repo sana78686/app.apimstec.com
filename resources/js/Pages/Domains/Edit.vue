@@ -23,7 +23,7 @@ const form = useForm({
 });
 
 function submit() {
-  form.put(route('domains.update', props.domain.id));
+  form.put(route('domains.update', { domain: props.domain.id }));
 }
 
 /* ── Password visibility ── */
@@ -38,7 +38,7 @@ async function testSavedConnection() {
   testing.value    = true;
   testResult.value = null;
   try {
-    const res = await fetch(route('domains.test-saved-connection', props.domain.id), {
+    const res = await fetch(route('domains.test-saved-connection', { domain: props.domain.id }), {
       method: 'POST',
       headers: {
         'Accept':       'application/json',

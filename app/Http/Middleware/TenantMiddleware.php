@@ -42,28 +42,37 @@ class TenantMiddleware
     private function resolveDomain(Request $request): ?Domain
     {
         try {
-            // 1. Admin session (web routes)
-            $domainId = session('active_domain_id');
-            if ($domainId) {
-                return Domain::where('id', $domainId)->where('is_active', true)->first();
-            }
-
-            // 2. Domain in URL: /{site_domain}/api/public/...
+            // 1. Domain in URL path (must beat CMS session so /{domain}/sitemap.xml & API stay correct)
             $route = $request->route();
             if ($route && $route->hasParameter('site_domain')) {
                 $siteDomain = $route->parameter('site_domain');
                 if (is_string($siteDomain) && $siteDomain !== '') {
-                    $fromPath = $this->resolveDomainFromHostHeader($siteDomain);
+                    $seoByPath = $request->routeIs('sitemap.by-domain', 'robots.by-domain');
+                    $fromPath = $this->resolveDomainFromHostHeader($siteDomain, $seoByPath);
                     if ($fromPath) {
                         return $fromPath;
                     }
                 }
             }
 
-            // 3. X-Domain header (legacy clients, curl, build tools)
+            // 2. Admin session (CMS workspace)
+            $domainId = session('active_domain_id');
+            if ($domainId) {
+                return Domain::where('id', $domainId)->where('is_active', true)->first();
+            }
+
+            // 3. Public hostname for /sitemap.xml and /robots.txt (crawler hits live site host)
+            if ($this->isRootSeoFileRequest($request)) {
+                $fromHost = $this->resolveDomainFromHostHeader($request->getHost(), true);
+                if ($fromHost) {
+                    return $fromHost;
+                }
+            }
+
+            // 4. X-Domain header (legacy /api/public/* clients)
             $header = $request->header('X-Domain');
             if ($header) {
-                return $this->resolveDomainFromHostHeader($header);
+                return $this->resolveDomainFromHostHeader($header, false);
             }
         } catch (\Throwable $e) {
             // Domains table may not exist yet (migration pending) — fail gracefully
@@ -72,10 +81,19 @@ class TenantMiddleware
         return null;
     }
 
+    private function isRootSeoFileRequest(Request $request): bool
+    {
+        $p = $request->path();
+
+        return $p === 'sitemap.xml' || $p === 'robots.txt';
+    }
+
     /**
      * Match `domains.domain` even if React sends www. prefix or different casing.
+     *
+     * @param  bool  $inactiveFallbackForPublicSeo  If true, allow inactive domains when config allows (sitemap/robots only).
      */
-    private function resolveDomainFromHostHeader(string $header): ?Domain
+    private function resolveDomainFromHostHeader(string $header, bool $inactiveFallbackForPublicSeo = false): ?Domain
     {
         $raw = strtolower(trim($header));
         if ($raw === '') {
@@ -88,10 +106,22 @@ class TenantMiddleware
             str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host,
         ]));
 
-        return Domain::query()
+        $active = Domain::query()
             ->where('is_active', true)
             ->whereIn('domain', $candidates)
             ->first();
+
+        if ($active) {
+            return $active;
+        }
+
+        if ($inactiveFallbackForPublicSeo && config('seo.allow_inactive_domains_for_sitemap_robots', true)) {
+            return Domain::query()
+                ->whereIn('domain', $candidates)
+                ->first();
+        }
+
+        return null;
     }
 
     private function switchTenantConnection(Domain $domain): void

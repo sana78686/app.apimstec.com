@@ -40,6 +40,11 @@ class RedirectIfCmsMissingLocalePrefix
             return $next($request);
         }
 
+        // Google OAuth callback (no /{locale}/ prefix — must match GOOGLE_GSC_REDIRECT_URI)
+        if (str_starts_with($path, 'oauth/')) {
+            return $next($request);
+        }
+
         $exemptExact = [
             'login',
             'logout',
@@ -56,6 +61,11 @@ class RedirectIfCmsMissingLocalePrefix
             if ($path === $ex || str_starts_with($path, $ex.'/')) {
                 return $next($request);
             }
+        }
+
+        // /compresspdf.id/sitemap.xml — first segment is a hostname, not a CMS locale
+        if (preg_match('#^[a-zA-Z0-9][a-zA-Z0-9.\-]*\.[a-zA-Z]{2,}/(sitemap\.xml|robots\.txt)$#', $path)) {
+            return $next($request);
         }
 
         if (str_starts_with($path, 'email/')

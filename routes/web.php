@@ -15,6 +15,7 @@ use App\Http\Controllers\Seo\SchemaMarkupController;
 use App\Http\Controllers\Seo\SocialSharingController;
 use App\Http\Controllers\Seo\ImageSeoController;
 use App\Http\Controllers\Seo\AnalyticsController;
+use App\Http\Controllers\Seo\GoogleSearchConsoleOAuthController;
 use App\Http\Controllers\Seo\BrokenLinksController;
 use App\Http\Controllers\Seo\ContentOptimizationController;
 use App\Http\Controllers\Seo\PerformanceController;
@@ -46,6 +47,25 @@ Route::get('/', function () {
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots');
+
+/*
+| Google Search Console OAuth callback (single URL for all locales; state carries return locale).
+*/
+Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
+    Route::get('/oauth/google-search-console/callback', [GoogleSearchConsoleOAuthController::class, 'callback'])
+        ->name('oauth.gsc.callback');
+});
+
+/*
+| Same app, explicit site segment (FQDN must contain a dot so /en/... is never captured):
+| https://app.example.com/compresspdf.id/sitemap.xml
+*/
+Route::prefix('{site_domain}')
+    ->where(['site_domain' => '(?=.*\.)[a-zA-Z0-9.\-]+'])
+    ->group(function () {
+        Route::get('sitemap.xml', SitemapController::class)->name('sitemap.by-domain');
+        Route::get('robots.txt', RobotsTxtController::class)->name('robots.by-domain');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -155,6 +175,10 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
             Route::get('/broken-links', [BrokenLinksController::class, 'index'])->name('broken-links');
             Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
             Route::put('/analytics', [AnalyticsController::class, 'update'])->name('analytics.update');
+            Route::get('/analytics/google/connect', [GoogleSearchConsoleOAuthController::class, 'redirect'])
+                ->name('analytics.google.connect');
+            Route::post('/analytics/google/disconnect', [GoogleSearchConsoleOAuthController::class, 'disconnect'])
+                ->name('analytics.google.disconnect');
             Route::get('/content-optimization', [ContentOptimizationController::class, 'index'])->name('content-optimization');
 
             $seoModules = [

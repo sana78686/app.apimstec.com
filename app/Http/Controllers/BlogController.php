@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Blog;
 use App\Support\ContentLocales;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,7 +91,7 @@ class BlogController extends Controller
         ]);
 
         $visibility = $request->input('visibility', Blog::VISIBILITY_DRAFT);
-        $blog = Blog::create([
+        $attrs = [
             'locale' => $loc,
             'title' => $request->title,
             'slug' => $request->slug ?: Str::slug($request->title),
@@ -107,7 +108,20 @@ class BlogController extends Controller
             'og_title' => $request->og_title,
             'og_description' => $request->og_description,
             'og_image' => $request->og_image,
-        ]);
+        ];
+        try {
+            $blog = Blog::create($attrs);
+        } catch (QueryException $e) {
+            // Tenant DBs may still have blogs.user_id → tenant.users until migration
+            // 2026_04_03_100000_drop_blogs_user_id_foreign_references_registry runs.
+            $sqlState = (int) ($e->errorInfo[1] ?? 0);
+            if ($sqlState === 1452 && str_contains($e->getMessage(), 'user_id')) {
+                $attrs['user_id'] = null;
+                $blog = Blog::create($attrs);
+            } else {
+                throw $e;
+            }
+        }
 
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Blog created.', 'blog' => $this->blogToArray($blog)], 201);

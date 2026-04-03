@@ -61,4 +61,10 @@ class AnalyticsSetting extends Model
     {
         Cache::forget('analytics_settings_all');
     }
+
+    public static function forget(string $key): void
+    {
+        self::where('key', $key)->delete();
+        self::clearCache();
+    }
 }

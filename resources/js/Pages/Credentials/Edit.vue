@@ -94,7 +94,7 @@ function removePortal(i) {
         </div>
       </div>
 
-      <form id="edit-credential-form" class="admin-box admin-box-smooth" @submit.prevent="form.put(route('credentials.update', credential.id))">
+      <form id="edit-credential-form" class="admin-box admin-box-smooth" @submit.prevent="form.put(route('credentials.update', { credential: credential.id }))">
         <div class="credential-section">
           <div class="credential-section-head">
             <div class="d-flex align-items-center gap-2">

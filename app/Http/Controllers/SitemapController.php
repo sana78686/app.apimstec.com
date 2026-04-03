@@ -2,54 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Blog;
-use App\Models\Page;
+use App\Models\Domain;
+use App\Support\SitemapUrlCollector;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
 {
     /**
-     * Serve sitemap.xml. Generated on each request so it stays fresh:
-     * includes only published pages and blogs; deleted or unpublished content is omitted.
+     * Serve sitemap.xml for the resolved tenant (Host header or /{domain}/sitemap.xml path).
+     * URLs use the site's public origin (Domain.frontend_url or https://domain) and React paths.
      */
     public function __invoke(): Response
     {
-        $baseUrl = rtrim(config('app.url'), '/');
-
-        $urls = [];
-
-        foreach (Page::where('is_published', true)->orderBy('updated_at', 'desc')->get(['slug', 'updated_at']) as $page) {
-            $urls[] = [
-                'loc' => $baseUrl.'/'.$page->slug,
-                'lastmod' => $page->updated_at->format('Y-m-d'),
-                'changefreq' => 'weekly',
-                'priority' => '0.8',
-            ];
+        $domain = app()->bound('active_domain') ? app('active_domain') : null;
+        if (! $domain instanceof Domain) {
+            abort(404, 'Sitemap is not available for this host. Use your live site URL or /{your-domain}/sitemap.xml on the CMS host.');
         }
 
-        foreach (Blog::where('is_published', true)->orderBy('updated_at', 'desc')->get(['slug', 'updated_at']) as $blog) {
-            $urls[] = [
-                'loc' => $baseUrl.'/blog/'.$blog->slug,
-                'lastmod' => $blog->updated_at->format('Y-m-d'),
-                'changefreq' => 'monthly',
-                'priority' => '0.6',
-            ];
-        }
+        $urls = SitemapUrlCollector::forDomain($domain);
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
         foreach ($urls as $u) {
             $xml .= '  <url>'."\n";
-            $xml .= '    <loc>'.htmlspecialchars($u['loc'], ENT_XML1, 'UTF-8').'</loc>'."\n";
-            $xml .= '    <lastmod>'.htmlspecialchars($u['lastmod'], ENT_XML1, 'UTF-8').'</lastmod>'."\n";
-            $xml .= '    <changefreq>'.htmlspecialchars($u['changefreq'], ENT_XML1, 'UTF-8').'</changefreq>'."\n";
-            $xml .= '    <priority>'.htmlspecialchars($u['priority'], ENT_XML1, 'UTF-8').'</priority>'."\n";
+            $xml .= '    <loc>'.htmlspecialchars($u['loc'], ENT_XML1 | ENT_QUOTES, 'UTF-8').'</loc>'."\n";
+            $xml .= '    <lastmod>'.htmlspecialchars($u['lastmod'], ENT_XML1 | ENT_QUOTES, 'UTF-8').'</lastmod>'."\n";
+            $xml .= '    <changefreq>'.htmlspecialchars($u['changefreq'], ENT_XML1 | ENT_QUOTES, 'UTF-8').'</changefreq>'."\n";
+            $xml .= '    <priority>'.htmlspecialchars($u['priority'], ENT_XML1 | ENT_QUOTES, 'UTF-8').'</priority>'."\n";
             $xml .= '  </url>'."\n";
         }
         $xml .= '</urlset>';
 
         return response($xml, 200, [
-            'Content-Type' => 'application/xml',
+            'Content-Type' => 'application/xml; charset=UTF-8',
             'Cache-Control' => 'public, max-age=3600',
         ]);
     }

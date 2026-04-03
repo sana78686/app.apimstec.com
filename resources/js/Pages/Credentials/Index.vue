@@ -48,7 +48,7 @@ async function copyToClipboard(text, label) {
 
 function destroy(id) {
   if (!confirm('Delete this credential?')) return;
-  router.delete(route('credentials.destroy', id), { preserveScroll: true });
+  router.delete(route('credentials.destroy', { credential: id }), { preserveScroll: true });
 }
 
 const credentialList = () => props.credentials?.data ?? [];
@@ -213,7 +213,7 @@ const hasPaginator = () => (props.credentials?.last_page ?? 1) > 1;
                   <span v-else class="text-muted small">—</span>
                 </td>
                 <td class="admin-cred-actions">
-                  <Link :href="route('credentials.edit', c.id)" class="admin-list-link me-2">Edit</Link>
+                  <Link :href="route('credentials.edit', { credential: c.id })" class="admin-list-link me-2">Edit</Link>
                   <button type="button" class="admin-list-link admin-list-link-danger" @click="destroy(c.id)">
                     Delete
                   </button>

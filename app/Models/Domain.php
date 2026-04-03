@@ -85,4 +85,23 @@ class Domain extends Model
 
         return $h;
     }
+
+    /**
+     * Public marketing site origin for sitemap / robots / SEO (not the CMS app URL).
+     * Uses frontend_url when set; otherwise https://{domain} without leading www.
+     */
+    public function publicSiteBaseUrl(): string
+    {
+        $front = trim((string) ($this->frontend_url ?? ''));
+        if ($front !== '') {
+            $front = preg_replace('#/+$#u', '', $front) ?? $front;
+
+            return rtrim($front, '/');
+        }
+
+        $host = strtolower(trim((string) ($this->domain ?? '')));
+        $host = preg_replace('#^www\.#i', '', $host);
+
+        return $host !== '' ? 'https://'.$host : '';
+    }
 }

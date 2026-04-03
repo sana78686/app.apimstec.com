@@ -301,8 +301,10 @@
 
 .admin-nav-sidebar-nav {
   flex: 1;
+  min-height: 0;
   padding: 0.75rem 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-nav-sidebar-label {
@@ -507,13 +509,14 @@
   margin-top: 0.25rem;
   min-width: 240px;
   max-height: min(70vh, 28rem);
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--admin-card-bg);
   border: 1px solid var(--admin-card-border);
   border-radius: var(--admin-radius-lg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 60;
-  overflow: hidden;
 }
 
 .admin-user-dropdown a,

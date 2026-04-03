@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
 const page = usePage();
@@ -26,6 +26,13 @@ const props = defineProps({
   },
   topPages: { type: Array, default: () => [] },
   topKeywords: { type: Array, default: () => [] },
+  searchConsoleLiveData: { type: Boolean, default: false },
+  searchConsoleLiveDataNote: { type: String, default: '' },
+  gscDateRange: { type: Object, default: null },
+  gscError: { type: String, default: null },
+  gscConnected: { type: Boolean, default: false },
+  gscConnectedEmail: { type: String, default: '' },
+  gscOAuthConfigured: { type: Boolean, default: false },
 });
 
 const form = useForm({
@@ -45,9 +52,15 @@ watch(
 );
 
 const successMessage = ref(page.props.flash?.success || '');
+const errorMessage = ref(page.props.flash?.error || '');
 
 const GSC_URL = 'https://search.google.com/search-console';
 const GA_URL = 'https://analytics.google.com';
+
+function disconnectGsc() {
+  if (!window.confirm('Disconnect Google Search Console for this website? You can connect again anytime.')) return;
+  router.post(route('seo.analytics.google.disconnect'));
+}
 </script>
 
 <template>
@@ -58,6 +71,17 @@ const GA_URL = 'https://analytics.google.com';
 
     <div class="admin-list-page">
       <p v-if="successMessage" class="admin-flash admin-flash-success">{{ successMessage }}</p>
+      <p v-if="errorMessage" class="admin-flash admin-flash-error" role="alert">{{ errorMessage }}</p>
+
+      <p
+        v-if="searchConsoleLiveDataNote"
+        class="text-muted small border rounded p-3 mb-4 bg-light"
+        role="status"
+      >
+        {{ searchConsoleLiveDataNote }}
+      </p>
+
+      <p v-if="gscError" class="admin-flash admin-flash-error" role="alert">{{ gscError }}</p>
 
       <div class="admin-list-page-header">
         <div>
@@ -72,27 +96,27 @@ const GA_URL = 'https://analytics.google.com';
         <div class="col-sm-6 col-lg-3">
           <div class="admin-box admin-box-smooth h-100 p-3">
             <div class="small text-muted mb-1">Clicks</div>
-            <div class="fs-4 fw-semibold">{{ summary?.clicks != null ? summary.clicks.toLocaleString() : '—' }}</div>
-            <div v-if="summary?.clicks == null" class="small text-muted">Connect Search Console below</div>
+            <div class="fs-4 fw-semibold">{{ searchConsoleLiveData ? Number(summary?.clicks ?? 0).toLocaleString() : '—' }}</div>
+            <div v-if="!searchConsoleLiveData" class="small text-muted">Connect Search Console below</div>
           </div>
         </div>
         <div class="col-sm-6 col-lg-3">
           <div class="admin-box admin-box-smooth h-100 p-3">
             <div class="small text-muted mb-1">Impressions</div>
-            <div class="fs-4 fw-semibold">{{ summary?.impressions != null ? summary.impressions.toLocaleString() : '—' }}</div>
-            <div v-if="summary?.impressions == null" class="small text-muted">Connect Search Console below</div>
+            <div class="fs-4 fw-semibold">{{ searchConsoleLiveData ? Number(summary?.impressions ?? 0).toLocaleString() : '—' }}</div>
+            <div v-if="!searchConsoleLiveData" class="small text-muted">Connect Search Console below</div>
           </div>
         </div>
         <div class="col-sm-6 col-lg-3">
           <div class="admin-box admin-box-smooth h-100 p-3">
             <div class="small text-muted mb-1">CTR</div>
-            <div class="fs-4 fw-semibold">{{ summary?.ctr != null ? (summary.ctr + '%') : '—' }}</div>
+            <div class="fs-4 fw-semibold">{{ searchConsoleLiveData && summary?.ctr != null ? summary.ctr + '%' : '—' }}</div>
           </div>
         </div>
         <div class="col-sm-6 col-lg-3">
           <div class="admin-box admin-box-smooth h-100 p-3">
             <div class="small text-muted mb-1">Avg. position</div>
-            <div class="fs-4 fw-semibold">{{ summary?.position != null ? summary.position : '—' }}</div>
+            <div class="fs-4 fw-semibold">{{ searchConsoleLiveData && summary?.position != null ? summary.position : '—' }}</div>
           </div>
         </div>
       </div>
@@ -120,7 +144,9 @@ const GA_URL = 'https://analytics.google.com';
                 </tbody>
               </table>
             </div>
-            <p v-else class="admin-text-muted p-3 mb-0">Connect Google Search Console and add your property below to see top pages.</p>
+            <p v-else class="admin-text-muted p-3 mb-0">
+              {{ searchConsoleLiveData ? 'No page-level data in this period.' : 'Connect Search Console and set the property URL to see top pages.' }}
+            </p>
           </div>
         </div>
         <div class="col-lg-6">
@@ -145,14 +171,45 @@ const GA_URL = 'https://analytics.google.com';
                 </tbody>
               </table>
             </div>
-            <p v-else class="admin-text-muted p-3 mb-0">Connect Google Search Console and add your property below to see top keywords.</p>
+            <p v-else class="admin-text-muted p-3 mb-0">
+              {{ searchConsoleLiveData ? 'No query data in this period.' : 'Connect Search Console and set the property URL to see top keywords.' }}
+            </p>
           </div>
         </div>
       </div>
 
+      <div class="admin-box admin-box-smooth mb-4">
+        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Google Search Console (live data)</h2>
+        <p class="text-muted small mb-3">
+          Each website stores its own OAuth tokens. The Google account you use must have access to the property in Search Console.
+        </p>
+        <div v-if="!gscOAuthConfigured" class="alert alert-warning small mb-3">
+          OAuth is not configured: set <code class="admin-list-code">GOOGLE_CLIENT_ID</code>,
+          <code class="admin-list-code">GOOGLE_CLIENT_SECRET</code>, and
+          <code class="admin-list-code">GOOGLE_GSC_REDIRECT_URI</code> in the CMS <code class="admin-list-code">.env</code>, then run
+          <code class="admin-list-code">php artisan config:clear</code>.
+        </div>
+        <div v-else class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <a
+            v-if="!gscConnected"
+            :href="route('seo.analytics.google.connect')"
+            class="btn btn-primary btn-sm"
+          >Connect Google Search Console</a>
+          <template v-else>
+            <span class="small text-muted">
+              Connected<span v-if="gscConnectedEmail"> as <strong>{{ gscConnectedEmail }}</strong></span>
+            </span>
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="disconnectGsc">Disconnect</button>
+          </template>
+        </div>
+      </div>
+
       <div class="admin-box admin-box-smooth">
-        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Integration</h2>
-        <p class="text-muted small mb-3">Add your Google Search Console property and Google Analytics (GA4) Measurement ID. Data can be synced via API when configured.</p>
+        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Integration settings</h2>
+        <p class="text-muted small mb-3">
+          Property URL must match Search Console exactly (e.g. <code class="admin-list-code">https://yoursite.com/</code> or <code class="admin-list-code">sc-domain:yoursite.com</code>).
+          GA4 Measurement ID is used on the public React site.
+        </p>
 
         <form @submit.prevent="form.put(route('seo.analytics.update'))" class="mb-4">
           <div class="mb-3">

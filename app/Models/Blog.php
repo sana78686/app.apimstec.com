@@ -69,6 +69,9 @@ class Blog extends Model
         ];
     }
 
+    /**
+     * CMS author lives on the registry DB (User::$connection = mysql), not tenant.users.
+     */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
