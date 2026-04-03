@@ -6,6 +6,7 @@ use App\Models\HomeCard;
 use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,12 +28,13 @@ class CardsSectionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'icon' => 'nullable|string|max:64',
         ]);
 
-        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $loc = ContentLocales::normalize($validated['locale']);
         $maxOrder = HomeCard::where('locale', $loc)->max('sort_order') ?? 0;
         HomeCard::create([
             'locale' => $loc,
@@ -50,12 +52,18 @@ class CardsSectionController extends Controller
         $model = HomeCard::findOrFail($card);
 
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'icon' => 'nullable|string|max:64',
         ]);
 
-        $model->update($validated);
+        $model->update([
+            'locale' => ContentLocales::normalize($validated['locale']),
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? '',
+            'icon' => $validated['icon'] ?? null,
+        ]);
 
         return redirect()->route('content-manager.cards')->with('success', 'Card updated.');
     }

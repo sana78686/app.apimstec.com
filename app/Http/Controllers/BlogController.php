@@ -82,10 +82,10 @@ class BlogController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $loc = $this->cmsLocale($request);
         $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
-            'slug' => ['nullable', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',
@@ -99,6 +99,7 @@ class BlogController extends Controller
             'og_image' => 'nullable|string|max:500',
         ]);
 
+        $loc = ContentLocales::normalize($request->input('locale'));
         $visibility = $request->input('visibility', Blog::VISIBILITY_DRAFT);
         $attrs = [
             'locale' => $loc,
@@ -151,10 +152,10 @@ class BlogController extends Controller
     public function update(Request $request, mixed $blog): RedirectResponse|JsonResponse
     {
         $blog = $this->resolveBlog($blog);
-        $loc = $blog->locale ?? $this->cmsLocale($request);
         $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))->ignore($blog->id)],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Blog::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))->ignore($blog->id)],
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'published_at' => 'nullable|date',
@@ -168,8 +169,10 @@ class BlogController extends Controller
             'og_image' => 'nullable|string|max:500',
         ]);
 
+        $loc = ContentLocales::normalize($request->input('locale'));
         $visibility = $request->input('visibility', $blog->visibility ?? Blog::VISIBILITY_DRAFT);
         $blog->update([
+            'locale' => $loc,
             'title' => $request->title,
             'slug' => $request->slug,
             'excerpt' => $request->excerpt,

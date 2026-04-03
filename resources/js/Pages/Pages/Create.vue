@@ -1,12 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { onMounted, reactive, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { onMounted, reactive, ref, watch } from 'vue';
+
+const inertiaPage = usePage();
 
 const parents = ref([]);
 const loading = ref(true);
@@ -18,6 +21,7 @@ const STATUS_OPTIONS = [
 ];
 
 const form = reactive({
+  locale: inertiaPage.props.cmsLocale || 'id',
   title: '',
   slug: '',
   content: '',
@@ -30,14 +34,31 @@ const form = reactive({
 });
 const errors = reactive({});
 
+async function loadParents() {
+  const { data } = await window.axios.get('/api/pages/create', { params: { locale: form.locale } });
+  parents.value = data.parents ?? [];
+}
+
 onMounted(async () => {
   try {
-    const { data } = await window.axios.get('/api/pages/create');
-    parents.value = data.parents ?? [];
+    await loadParents();
   } finally {
     loading.value = false;
   }
 });
+
+watch(
+  () => form.locale,
+  async () => {
+    if (loading.value) return;
+    form.parent_id = '';
+    try {
+      await loadParents();
+    } catch (_) {
+      parents.value = [];
+    }
+  }
+);
 
 function slugFromTitle() {
   if (!form.title) return;
@@ -90,6 +111,14 @@ async function submit() {
             <span class="ms-2 text-muted small">Loading…</span>
           </div>
           <form id="create-page-form" v-else key="form" @submit.prevent="submit" class="admin-form-smooth">
+            <div class="mb-3">
+              <CmsLocaleSelect
+                :model-value="form.locale"
+                id="page-create-locale"
+                @update:model-value="(v) => (form.locale = v)"
+              />
+              <InputError :message="errors.locale?.[0]" />
+            </div>
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <LabelWithTooltip for="title" value="Title" tip="Display name of the page." required />

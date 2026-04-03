@@ -1,11 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -13,15 +14,20 @@ const props = defineProps({
   flash: { type: Object, default: () => ({}) },
 });
 
+const page = usePage();
+const defaultLocale = () => page.props.cmsLocale || 'id';
+
 const showAddModal = ref(false);
 const editingId = ref(null);
 
 const addForm = useForm({
+  locale: defaultLocale(),
   question: '',
   answer: '',
 });
 
 const editForm = useForm({
+  locale: defaultLocale(),
   question: '',
   answer: '',
 });
@@ -29,11 +35,13 @@ const editForm = useForm({
 function openAdd() {
   addForm.reset();
   addForm.clearErrors();
+  addForm.locale = defaultLocale();
   showAddModal.value = true;
   editingId.value = null;
 }
 
 function openEdit(item) {
+  editForm.locale = item.locale ?? defaultLocale();
   editForm.question = item.question;
   editForm.answer = item.answer;
   editForm.clearErrors();
@@ -106,10 +114,16 @@ function remove(item) {
             class="list-group-item d-flex align-items-start justify-content-between gap-2"
           >
             <div v-if="editingId !== item.id" class="flex-grow-1">
-              <div class="fw-semibold">{{ item.question }}</div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge text-bg-light text-uppercase">{{ item.locale }}</span>
+                <span class="fw-semibold">{{ item.question }}</span>
+              </div>
               <div class="text-muted small mt-1">{{ item.answer }}</div>
             </div>
             <div v-else class="flex-grow-1">
+              <div class="mb-2">
+                <CmsLocaleSelect v-model="editForm.locale" id="faq-edit-locale" :error="editForm.errors.locale" />
+              </div>
               <div class="mb-2">
                 <label class="form-label small">Question</label>
                 <TextInput v-model="editForm.question" class="form-control form-control-sm" />
@@ -143,6 +157,9 @@ function remove(item) {
       <div class="p-4">
         <h3 class="h6 mb-3">Add new FAQ</h3>
         <form @submit.prevent="submitAdd">
+          <div class="mb-3">
+            <CmsLocaleSelect v-model="addForm.locale" id="faq-add-locale" :error="addForm.errors.locale" />
+          </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Question</label>
             <TextInput v-model="addForm.question" class="form-control" placeholder="e.g. Is it free?" />

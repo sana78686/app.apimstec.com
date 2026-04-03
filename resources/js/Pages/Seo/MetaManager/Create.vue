@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -8,6 +9,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, reactive, watch } from 'vue';
 
 const props = defineProps({
+  filterLocale: { type: String, default: 'id' },
   pages: { type: Array, default: () => [] },
   selectedPage: { type: Object, default: null },
 });
@@ -62,8 +64,19 @@ const metaRobotsOptions = [
 ];
 
 function goToPage(pageId) {
-  const url = pageId ? route('seo.meta-manager.create', { page_id: pageId }) : route('seo.meta-manager.create');
-  router.visit(url);
+  const q = { locale: props.filterLocale };
+  if (pageId) {
+    q.page_id = pageId;
+  }
+  router.visit(route('seo.meta-manager.create', q));
+}
+
+function switchFilterLocale(loc) {
+  const q = { locale: loc };
+  if (props.selectedPage?.id) {
+    q.page_id = props.selectedPage.id;
+  }
+  router.get(route('seo.meta-manager.create'), q, { preserveScroll: true });
 }
 
 function fillFromSelectedPage() {
@@ -99,7 +112,7 @@ async function submit() {
       og_description: form.og_description || null,
       og_image: form.og_image || null,
     });
-    router.visit(route('seo.meta-manager') + '?success=meta-saved');
+    router.visit(`${route('seo.meta-manager', { locale: props.filterLocale })}?success=meta-saved`);
   } catch (e) {
     if (e.response?.status === 422 && e.response?.data?.errors) {
       Object.assign(errors, e.response.data.errors);
@@ -128,13 +141,20 @@ async function submit() {
           </p>
         </div>
         <div class="admin-form-page-top-actions d-flex gap-2 align-items-center">
-          <Link :href="route('seo.meta-manager')" class="btn btn-secondary btn-sm admin-btn-smooth">Back to list</Link>
+          <Link :href="route('seo.meta-manager', { locale: filterLocale })" class="btn btn-secondary btn-sm admin-btn-smooth">Back to list</Link>
           <PrimaryButton v-if="selectedPage" type="submit" form="meta-manager-form" :loading="processing.save" :disabled="processing.save" class="btn btn-primary btn-sm admin-btn-smooth">Save</PrimaryButton>
         </div>
       </div>
 
       <div class="admin-box admin-box-smooth">
         <div class="mb-4">
+          <CmsLocaleSelect
+            :model-value="filterLocale"
+            id="meta-create-locale"
+            label="Page language"
+            @update:model-value="switchFilterLocale"
+          />
+          <p class="text-muted small mt-2 mb-3">Only pages in this language appear below. Choose the language first, then pick a page.</p>
           <label class="form-label small fw-semibold">Select page</label>
           <select
             :value="selectedPage?.id ?? ''"
@@ -142,7 +162,7 @@ async function submit() {
             @change="(e) => goToPage(e.target.value ? Number(e.target.value) : null)"
           >
             <option value="">— Choose a page —</option>
-            <option v-for="p in pages" :key="p.id" :value="p.id">{{ p.title }} ({{ p.slug }})</option>
+            <option v-for="p in pages" :key="p.id" :value="p.id">{{ p.title }} ({{ p.slug }}) — {{ p.locale }}</option>
           </select>
         </div>
 

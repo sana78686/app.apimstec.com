@@ -6,6 +6,7 @@ use App\Models\FaqItem;
 use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,11 +26,12 @@ class FaqSectionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'question' => 'required|string|max:500',
             'answer' => 'required|string|max:2000',
         ]);
 
-        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $loc = ContentLocales::normalize($validated['locale']);
         $maxOrder = FaqItem::where('locale', $loc)->max('sort_order') ?? 0;
         FaqItem::create([
             'locale' => $loc,
@@ -46,11 +48,16 @@ class FaqSectionController extends Controller
         $model = FaqItem::findOrFail($faqItem);
 
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'question' => 'required|string|max:500',
             'answer' => 'required|string|max:2000',
         ]);
 
-        $model->update($validated);
+        $model->update([
+            'locale' => ContentLocales::normalize($validated['locale']),
+            'question' => $validated['question'],
+            'answer' => $validated['answer'],
+        ]);
 
         return redirect()->route('content-manager.faq')->with('success', 'FAQ updated.');
     }

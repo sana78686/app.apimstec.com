@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
             'ziggy' => $ziggy,
             'cmsLocale' => $cmsLocale,
             'cmsLocales' => ContentLocales::SUPPORTED,
+            'cmsLocaleOptions' => ContentLocales::options(),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),

@@ -63,7 +63,9 @@ class PageController extends Controller
 
     public function create(): Response|JsonResponse
     {
-        $loc = $this->cmsLocale(request());
+        $loc = ContentLocales::normalize(
+            request()->query('locale') ?? $this->cmsLocale(request())
+        );
         $parents = Page::whereNull('parent_id')->where('locale', $loc)->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'slug']);
         if (request()->is('api/*')) {
             return response()->json(['parents' => $parents]);
@@ -73,19 +75,20 @@ class PageController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $loc = $this->cmsLocale($request);
         $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', $loc))],
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
+        $loc = ContentLocales::normalize($request->input('locale'));
         $visibility = $request->input('visibility', Page::VISIBILITY_DRAFT);
         $page = Page::create([
             'locale' => $loc,
@@ -129,19 +132,20 @@ class PageController extends Controller
 
     public function update(Request $request, Page $page): RedirectResponse|JsonResponse
     {
-        $loc = $page->locale ?? $this->cmsLocale($request);
         $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'title' => 'required|string|max:255',
-            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', $loc))->ignore($page->id)],
+            'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))->ignore($page->id)],
             'content' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
-            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', $loc))],
+            'parent_id' => ['nullable', Rule::exists(Page::class, 'id')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))],
             'visibility' => 'nullable|string|in:draft,visible,disabled',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
+        $loc = ContentLocales::normalize($request->input('locale'));
         $parentId = $request->parent_id;
         if ($parentId && (int) $parentId === (int) $page->id) {
             $parentId = null;
@@ -149,6 +153,7 @@ class PageController extends Controller
 
         $visibility = $request->input('visibility', $page->visibility ?? Page::VISIBILITY_DRAFT);
         $page->update([
+            'locale' => $loc,
             'title' => $request->title,
             'slug' => $request->slug,
             'content' => $request->content,

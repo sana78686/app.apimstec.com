@@ -1,12 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import HomePageEditor from '@/Components/HomePageEditor.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
 
 const props = defineProps({
+  contentLocale: { type: String, default: 'id' },
   homePageContent: { type: String, default: '' },
   homeMetaTitle: { type: String, default: '' },
   homeMetaDescription: { type: String, default: '' },
@@ -22,10 +24,12 @@ const props = defineProps({
 });
 
 const form = useForm({
+  locale: props.contentLocale,
   home_page_content: props.homePageContent,
 });
 
 const seoForm = useForm({
+  locale: props.contentLocale,
   meta_title:       props.homeMetaTitle,
   meta_description: props.homeMetaDescription,
   meta_keywords:    props.homeMetaKeywords,
@@ -38,6 +42,11 @@ const seoForm = useForm({
   frontend_head_snippet: props.homeFrontendHeadSnippet,
 });
 
+watch(() => props.contentLocale, (val) => {
+  const l = val || 'id';
+  form.locale = l;
+  seoForm.locale = l;
+});
 watch(() => props.homePageContent, (val) => {
   form.home_page_content = val ?? '';
 });
@@ -54,11 +63,17 @@ watch(() => props.homeFrontendHeadSnippet, (val) => { seoForm.frontend_head_snip
 
 function submit() {
   form.clearErrors();
+  form.locale = props.contentLocale;
   form.put(route('content-manager.update'), { preserveScroll: true });
 }
 function submitSeo() {
   seoForm.clearErrors();
+  seoForm.locale = props.contentLocale;
   seoForm.put(route('content-manager.home-seo.update'), { preserveScroll: true });
+}
+
+function switchContentLocale(loc) {
+  router.get(route('content-manager.index'), { content_locale: loc }, { preserveScroll: true });
 }
 </script>
 
@@ -79,6 +94,18 @@ function submitSeo() {
       <div v-if="flash?.success" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
         {{ flash.success }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+
+      <div class="admin-box admin-box-smooth mb-4">
+        <CmsLocaleSelect
+          :model-value="contentLocale"
+          id="home-content-locale"
+          label="Content language"
+          @update:model-value="switchContentLocale"
+        />
+        <p class="text-muted small mt-2 mb-0">
+          You are editing home page body and SEO for this language. Public site uses the same code from the visitor’s language.
+        </p>
       </div>
 
       <div class="admin-box admin-box-smooth mb-4">

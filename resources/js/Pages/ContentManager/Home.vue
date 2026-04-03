@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -49,16 +50,18 @@ function truncate(str, len = 60) {
 // FAQ
 const showFaqModal = ref(false);
 const faqEditingId = ref(null);
-const faqAddForm = useForm({ question: '', answer: '' });
-const faqEditForm = useForm({ question: '', answer: '' });
+const faqAddForm = useForm({ locale: props.cmsLocale || 'id', question: '', answer: '' });
+const faqEditForm = useForm({ locale: props.cmsLocale || 'id', question: '', answer: '' });
 
 function openFaqAdd() {
   faqAddForm.reset();
   faqAddForm.clearErrors();
+  faqAddForm.locale = props.cmsLocale || 'id';
   showFaqModal.value = true;
   faqEditingId.value = null;
 }
 function openFaqEdit(item) {
+  faqEditForm.locale = item.locale ?? props.cmsLocale ?? 'id';
   faqEditForm.question = item.question;
   faqEditForm.answer = item.answer;
   faqEditForm.clearErrors();
@@ -90,17 +93,19 @@ function removeFaq(item) {
 // Cards
 const showCardModal = ref(false);
 const cardEditingId = ref(null);
-const cardAddForm = useForm({ title: '', description: '', icon: '' });
-const cardEditForm = useForm({ title: '', description: '', icon: '' });
+const cardAddForm = useForm({ locale: props.cmsLocale || 'id', title: '', description: '', icon: '' });
+const cardEditForm = useForm({ locale: props.cmsLocale || 'id', title: '', description: '', icon: '' });
 
 function openCardAdd() {
   cardAddForm.reset();
   cardAddForm.clearErrors();
+  cardAddForm.locale = props.cmsLocale || 'id';
   cardAddForm.icon = iconOptionsList.value[0]?.value ?? '';
   showCardModal.value = true;
   cardEditingId.value = null;
 }
 function openCardEdit(card) {
+  cardEditForm.locale = card.locale ?? props.cmsLocale ?? 'id';
   cardEditForm.title = card.title;
   cardEditForm.description = card.description ?? '';
   cardEditForm.icon = card.icon ?? (iconOptionsList.value[0]?.value ?? '');
@@ -191,13 +196,14 @@ function iconLabel(key) {
           <div class="admin-list-table-wrap">
             <table class="admin-list-table" role="grid">
               <thead>
-                <tr><th>Question</th><th>Answer</th><th>Actions</th></tr>
+                <tr><th>Language</th><th>Question</th><th>Answer</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 <tr v-for="item in faqItems" :key="item.id">
                   <template v-if="faqEditingId === item.id">
-                    <td colspan="3">
+                    <td colspan="4">
                       <div class="d-flex flex-column gap-2">
+                        <CmsLocaleSelect v-model="faqEditForm.locale" id="faq-edit-locale" :error="faqEditForm.errors.locale" />
                         <TextInput v-model="faqEditForm.question" class="form-control form-control-sm" placeholder="Question" />
                         <textarea v-model="faqEditForm.answer" class="form-control form-control-sm" rows="2" placeholder="Answer"></textarea>
                         <div class="d-flex gap-2">
@@ -208,6 +214,7 @@ function iconLabel(key) {
                     </td>
                   </template>
                   <template v-else>
+                    <td><span class="badge text-bg-light text-uppercase">{{ item.locale }}</span></td>
                     <td>{{ item.question }}</td>
                     <td><span class="admin-list-text-muted">{{ truncate(item.answer, 80) }}</span></td>
                     <td>
@@ -237,10 +244,13 @@ function iconLabel(key) {
           <div class="admin-list-table-wrap">
             <table class="admin-list-table" role="grid">
               <thead>
-                <tr><th style="width: 3rem;">Icon</th><th>Title</th><th>Description</th><th>Actions</th></tr>
+                <tr><th>Lang</th><th style="width: 3rem;">Icon</th><th>Title</th><th>Description</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 <tr v-for="card in cards" :key="card.id">
+                  <td v-if="cardEditingId !== card.id">
+                    <span class="badge text-bg-light text-uppercase">{{ card.locale }}</span>
+                  </td>
                   <td v-if="cardEditingId !== card.id">
                     <span class="card-icon-cell" :title="iconLabel(card.icon)">{{ iconEmoji(card.icon) }}</span>
                   </td>
@@ -252,8 +262,9 @@ function iconLabel(key) {
                     <button type="button" class="admin-list-link" @click="openCardEdit(card)">Edit</button>
                     <button type="button" class="admin-list-link admin-list-link-danger" @click="removeCard(card)">Delete</button>
                   </td>
-                  <td v-else colspan="4">
+                  <td v-else colspan="5">
                     <div class="d-flex flex-column gap-2">
+                      <CmsLocaleSelect v-model="cardEditForm.locale" id="card-edit-locale" :error="cardEditForm.errors.locale" />
                       <div><label class="form-label small">Title</label><TextInput v-model="cardEditForm.title" class="form-control form-control-sm" /></div>
                       <div><label class="form-label small">Description</label><textarea v-model="cardEditForm.description" class="form-control form-control-sm" rows="2"></textarea></div>
                       <div><label class="form-label small">Icon</label>
@@ -281,6 +292,9 @@ function iconLabel(key) {
         <h3 class="h6 mb-3">Add new FAQ</h3>
         <form @submit.prevent="submitFaqAdd">
           <div class="mb-3">
+            <CmsLocaleSelect v-model="faqAddForm.locale" id="faq-add-locale" :error="faqAddForm.errors.locale" />
+          </div>
+          <div class="mb-3">
             <label class="form-label small fw-semibold">Question</label>
             <TextInput v-model="faqAddForm.question" class="form-control" placeholder="e.g. Is it free?" />
             <InputError :message="faqAddForm.errors.question" />
@@ -302,6 +316,9 @@ function iconLabel(key) {
       <div class="p-4">
         <h3 class="h6 mb-3">Add new card</h3>
         <form @submit.prevent="submitCardAdd">
+          <div class="mb-3">
+            <CmsLocaleSelect v-model="cardAddForm.locale" id="card-add-locale" :error="cardAddForm.errors.locale" />
+          </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Title</label>
             <TextInput v-model="cardAddForm.title" class="form-control" placeholder="e.g. Fast compression" />

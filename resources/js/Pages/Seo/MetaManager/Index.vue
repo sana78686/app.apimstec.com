@@ -1,12 +1,24 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import Pagination from '@/Components/Pagination.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
+  filterLocale: { type: String, default: 'id' },
   pages: { type: Array, default: () => [] },
 });
+
+function switchFilterLocale(loc) {
+  router.get(route('seo.meta-manager'), { locale: loc }, { preserveScroll: true });
+}
+
+function createUrl(pageId) {
+  const q = { locale: props.filterLocale };
+  if (pageId) q.page_id = pageId;
+  return route('seo.meta-manager.create', q);
+}
 
 const successMessage = ref('');
 const searchQuery = ref('');
@@ -58,7 +70,7 @@ function statusTitle(seo_status) {
           <h1 class="admin-list-page-title">Meta Manager</h1>
           <p class="admin-list-page-desc">Pages and their meta tag status. Set or edit meta title, description, canonical and robots per page.</p>
         </div>
-        <Link :href="route('seo.meta-manager.create')" class="admin-list-page-cta">
+        <Link :href="createUrl(null)" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -67,6 +79,16 @@ function statusTitle(seo_status) {
           </svg>
           Create meta tag
         </Link>
+      </div>
+
+      <div class="admin-box admin-box-smooth mb-3" style="padding: 1rem;">
+        <CmsLocaleSelect
+          :model-value="filterLocale"
+          id="meta-manager-locale"
+          label="Page language"
+          @update:model-value="switchFilterLocale"
+        />
+        <p class="text-muted small mb-0 mt-2">Only pages in this language are listed. Meta is stored on each page record.</p>
       </div>
 
       <div class="admin-list-toolbar">
@@ -91,6 +113,7 @@ function statusTitle(seo_status) {
             <tr>
               <th style="width: 2.5rem;"></th>
               <th>Title</th>
+              <th>Lang</th>
               <th>Slug</th>
               <th>Meta</th>
               <th>Actions</th>
@@ -108,6 +131,7 @@ function statusTitle(seo_status) {
                 ></span>
               </td>
               <td>{{ p.title }}</td>
+              <td><span class="badge text-bg-light text-uppercase">{{ p.locale }}</span></td>
               <td><code class="admin-list-code">{{ p.slug }}</code></td>
               <td>
                 <span v-if="p.meta_done" class="admin-list-badge">Done</span>
@@ -116,14 +140,14 @@ function statusTitle(seo_status) {
               <td>
                 <Link
                   v-if="p.meta_done"
-                  :href="route('seo.meta-manager.create', { page_id: p.id })"
+                  :href="createUrl(p.id)"
                   class="admin-list-link"
                 >
                   Edit
                 </Link>
                 <Link
                   v-else
-                  :href="route('seo.meta-manager.create', { page_id: p.id })"
+                  :href="createUrl(p.id)"
                   class="admin-list-link"
                 >
                   Set meta

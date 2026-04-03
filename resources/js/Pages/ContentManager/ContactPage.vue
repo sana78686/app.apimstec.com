@@ -1,12 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
 
 const props = defineProps({
+  contentLocale: { type: String, default: 'id' },
   contactEmail: { type: String, default: '' },
   contactPhone: { type: String, default: '' },
   contactAddress: { type: String, default: '' },
@@ -14,11 +16,15 @@ const props = defineProps({
 });
 
 const form = useForm({
+  locale: props.contentLocale,
   contact_email: props.contactEmail,
   contact_phone: props.contactPhone,
   contact_address: props.contactAddress,
 });
 
+watch(() => props.contentLocale, (val) => {
+  form.locale = val || 'id';
+});
 watch(
   () => [props.contactEmail, props.contactPhone, props.contactAddress],
   ([email, phone, address]) => {
@@ -28,7 +34,12 @@ watch(
   }
 );
 
+function switchLocale(loc) {
+  router.get(route('content-manager.contact'), { content_locale: loc }, { preserveScroll: true });
+}
+
 function submit() {
+  form.locale = props.contentLocale;
   form.put(route('content-manager.contact.update'), { preserveScroll: true });
 }
 </script>
@@ -50,6 +61,15 @@ function submit() {
       <div v-if="flash?.success" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
         {{ flash.success }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+
+      <div class="admin-box admin-box-smooth mb-3">
+        <CmsLocaleSelect
+          :model-value="contentLocale"
+          id="contact-content-locale"
+          @update:model-value="switchLocale"
+        />
+        <p class="text-muted small mt-2 mb-0">Contact details can differ per language (e.g. localized address).</p>
       </div>
 
       <div class="admin-box admin-box-smooth">

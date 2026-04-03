@@ -25,9 +25,9 @@ class PublicApiController extends Controller
     /**
      * Inbox for the public contact form: CMS “Contact us” email, else CONTACT_FORM_MAIL_TO env.
      */
-    private function contactFormMailTo(): string
+    private function contactFormMailTo(string $locale): string
     {
-        $fromCms = trim((string) ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_EMAIL, ''));
+        $fromCms = trim((string) ContentManagerController::getLocalized(ContentManagerController::KEY_CONTACT_EMAIL, $locale));
 
         if ($fromCms !== '') {
             return $fromCms;
@@ -44,10 +44,12 @@ class PublicApiController extends Controller
      */
     public function contact(Request $request): JsonResponse
     {
+        $loc = $this->publicLocale($request);
+
         return response()->json([
-            'contact_email' => $this->contactFormMailTo(),
-            'contact_phone' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_PHONE, ''),
-            'contact_address' => ContentManagerSetting::get(ContentManagerController::KEY_CONTACT_ADDRESS, ''),
+            'contact_email' => $this->contactFormMailTo($loc),
+            'contact_phone' => ContentManagerController::getLocalized(ContentManagerController::KEY_CONTACT_PHONE, $loc),
+            'contact_address' => ContentManagerController::getLocalized(ContentManagerController::KEY_CONTACT_ADDRESS, $loc),
         ]);
     }
 
@@ -64,7 +66,7 @@ class PublicApiController extends Controller
             'accepts_terms' => 'required|accepted',
         ]);
 
-        $toEmail = $this->contactFormMailTo();
+        $toEmail = $this->contactFormMailTo($this->publicLocale($request));
         $siteName = (string) config('contact.public_site_name');
 
         $name = $validated['name'];
@@ -251,16 +253,16 @@ class PublicApiController extends Controller
 
         return response()->json([
             'content'          => ContentManagerSetting::get($contentKey, ''),
-            'meta_title'       => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_TITLE, ''),
-            'meta_description' => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_DESCRIPTION, ''),
-            'meta_keywords'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_KEYWORDS, ''),
-            'focus_keyword'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_FOCUS_KEYWORD, ''),
-            'og_title'         => ContentManagerSetting::get(ContentManagerController::KEY_HOME_OG_TITLE, ''),
-            'og_description'   => ContentManagerSetting::get(ContentManagerController::KEY_HOME_OG_DESCRIPTION, ''),
-            'og_image'         => ContentManagerSetting::get(ContentManagerController::KEY_HOME_OG_IMAGE, ''),
-            'meta_robots'      => ContentManagerSetting::get(ContentManagerController::KEY_HOME_META_ROBOTS, 'index,follow'),
-            'canonical_url'    => ContentManagerSetting::get(ContentManagerController::KEY_HOME_CANONICAL_URL, ''),
-            'head_snippet'     => ContentManagerSetting::get(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
+            'meta_title'       => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_TITLE, $loc),
+            'meta_description' => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_DESCRIPTION, $loc),
+            'meta_keywords'    => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_KEYWORDS, $loc),
+            'focus_keyword'    => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_FOCUS_KEYWORD, $loc),
+            'og_title'         => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_TITLE, $loc),
+            'og_description'   => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_DESCRIPTION, $loc),
+            'og_image'         => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_IMAGE, $loc),
+            'meta_robots'      => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_ROBOTS, $loc) ?: 'index,follow',
+            'canonical_url'    => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_CANONICAL_URL, $loc),
+            'head_snippet'     => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc),
             'ga_measurement_id' => (string) AnalyticsSetting::getValue('ga_measurement_id', ''),
         ]);
     }
@@ -275,7 +277,8 @@ class PublicApiController extends Controller
             return response()->json(['message' => 'Page not found.'], 404);
         }
         [$key, $title] = $map[$slug];
-        $content = ContentManagerSetting::get($key, '');
+        $locale = $this->publicLocale($request);
+        $content = ContentManagerController::getLocalized($key, $locale);
 
         return response()->json([
             'slug' => $slug,
@@ -292,9 +295,10 @@ class PublicApiController extends Controller
     public function legalNav(Request $request): JsonResponse
     {
         $map = ContentManagerController::legalPageMap();
+        $locale = $this->publicLocale($request);
         $legal = [];
         foreach ($map as $slug => [$key]) {
-            $content = ContentManagerSetting::get($key, '');
+            $content = ContentManagerController::getLocalized($key, $locale);
             $legal[$slug] = self::legalSettingHasBody($content);
         }
 

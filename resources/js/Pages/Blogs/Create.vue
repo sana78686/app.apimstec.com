@@ -1,12 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { reactive, ref } from 'vue';
+
+const page = usePage();
 
 const STATUS_OPTIONS = [
   { value: 'draft',    label: 'Draft — not visible on site'     },
@@ -16,6 +19,7 @@ const STATUS_OPTIONS = [
 
 const processing = ref(false);
 const form = reactive({
+  locale: page.props.cmsLocale || 'id',
   title: '',
   slug: '',
   excerpt: '',
@@ -79,6 +83,14 @@ async function submit() {
       </div>
       <div class="admin-box admin-box-smooth">
         <form id="create-blog-form" @submit.prevent="submit" class="admin-form-smooth">
+          <div class="mb-3">
+            <CmsLocaleSelect
+              :model-value="form.locale"
+              id="blog-create-locale"
+              @update:model-value="(v) => (form.locale = v)"
+            />
+            <InputError :message="errors.locale?.[0]" />
+          </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <LabelWithTooltip for="title" value="Title" required />

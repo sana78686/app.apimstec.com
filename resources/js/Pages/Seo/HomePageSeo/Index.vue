@@ -1,11 +1,13 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
 
 const props = defineProps({
+  contentLocale: { type: String, default: 'id' },
   metaTitle:       { type: String, default: '' },
   metaDescription: { type: String, default: '' },
   metaKeywords:    { type: String, default: '' },
@@ -20,6 +22,7 @@ const props = defineProps({
 });
 
 const form = useForm({
+  locale: props.contentLocale,
   meta_title:       props.metaTitle,
   meta_description: props.metaDescription,
   meta_keywords:    props.metaKeywords,
@@ -32,6 +35,7 @@ const form = useForm({
   frontend_head_snippet: props.frontendHeadSnippet,
 });
 
+watch(() => props.contentLocale, (v) => { form.locale = v || 'id'; });
 watch(() => props.metaTitle,       (v) => { form.meta_title       = v ?? ''; });
 watch(() => props.metaDescription, (v) => { form.meta_description = v ?? ''; });
 watch(() => props.metaKeywords,    (v) => { form.meta_keywords    = v ?? ''; });
@@ -43,8 +47,13 @@ watch(() => props.metaRobots,      (v) => { form.meta_robots      = v ?? 'index,
 watch(() => props.canonicalUrl,    (v) => { form.canonical_url    = v ?? ''; });
 watch(() => props.frontendHeadSnippet, (v) => { form.frontend_head_snippet = v ?? ''; });
 
+function switchLocale(loc) {
+  router.get(route('seo.home-page'), { content_locale: loc }, { preserveScroll: true });
+}
+
 function submit() {
   form.clearErrors();
+  form.locale = props.contentLocale;
   form.put(route('content-manager.home-seo.update'), { preserveScroll: true });
 }
 
@@ -69,6 +78,16 @@ const descLen  = () => form.meta_description.length;
       <div v-if="flash?.success" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
         {{ flash.success }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+
+      <div class="admin-box admin-box-smooth mb-4">
+        <CmsLocaleSelect
+          :model-value="contentLocale"
+          id="home-seo-locale"
+          label="Content language"
+          @update:model-value="switchLocale"
+        />
+        <p class="text-muted small mt-2 mb-0">Meta tags apply to the home page for this language on the public site.</p>
       </div>
 
       <!-- ── Crawl & Indexing ─────────────────────────────────── -->

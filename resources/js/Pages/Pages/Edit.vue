@@ -1,12 +1,13 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
   pageId: { type: [Number, String], required: true },
@@ -25,6 +26,7 @@ const STATUS_OPTIONS = [
 ];
 
 const form = reactive({
+  locale: 'id',
   title: '',
   slug: '',
   content: '',
@@ -40,6 +42,7 @@ const pageIdNum = computed(() => Number(props.pageId) || 0);
 
 onMounted(async () => {
   if (props.page) {
+    form.locale = props.page.locale ?? 'id';
     form.title = props.page.title ?? '';
     form.slug = props.page.slug ?? '';
     form.content = props.page.content ?? '';
@@ -55,6 +58,7 @@ onMounted(async () => {
   try {
     const { data } = await window.axios.get(`/api/pages/${pageIdNum.value}/edit`);
     const p = data.page ?? {};
+    form.locale = p.locale ?? 'id';
     form.title = p.title ?? '';
     form.slug = p.slug ?? '';
     form.content = p.content ?? '';
@@ -71,6 +75,19 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+watch(
+  () => form.locale,
+  async (loc, prev) => {
+    if (loading.value || prev === undefined) return;
+    try {
+      const { data } = await window.axios.get('/api/pages/create', { params: { locale: loc } });
+      parents.value = data.parents ?? [];
+    } catch (_) {
+      parents.value = [];
+    }
+  }
+);
 
 function slugFromTitle() {
   if (!form.title) return;
@@ -127,6 +144,14 @@ async function submit() {
             <Link :href="route('pages.index')" class="ms-2">Back to pages</Link>
           </div>
           <form id="edit-page-form" v-else key="form" @submit.prevent="submit" class="admin-form-smooth">
+            <div class="mb-3">
+              <CmsLocaleSelect
+                :model-value="form.locale"
+                id="page-edit-locale"
+                @update:model-value="(v) => (form.locale = v)"
+              />
+              <InputError :message="errors.locale?.[0]" />
+            </div>
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <LabelWithTooltip for="title" value="Title" required />

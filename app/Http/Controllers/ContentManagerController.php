@@ -8,6 +8,7 @@ use App\Models\HomeCard;
 use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,22 +54,50 @@ class ContentManagerController extends Controller
         ];
     }
 
+    /**
+     * Read `{baseKey}_{locale}` from settings; fall back to legacy unsuffixed `baseKey` (pre-localization data).
+     */
+    public static function getLocalized(string $baseKey, string $locale): string
+    {
+        $loc = ContentLocales::normalize($locale);
+        $v = ContentManagerSetting::get($baseKey.'_'.$loc, '');
+        if ($v !== '') {
+            return $v;
+        }
+
+        return ContentManagerSetting::get($baseKey, '');
+    }
+
+    public static function setLocalized(string $baseKey, string $locale, string $value): void
+    {
+        $loc = ContentLocales::normalize($locale);
+        ContentManagerSetting::set($baseKey.'_'.$loc, $value);
+    }
+
+    private function contentEditorLocale(Request $request): string
+    {
+        return ContentLocales::normalize(
+            $request->query('content_locale') ?? $request->session()->get('cms_locale')
+        );
+    }
+
     public function index(Request $request): Response
     {
-        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $loc = $this->contentEditorLocale($request);
 
         return Inertia::render('ContentManager/Index', [
+            'contentLocale' => $loc,
             'homePageContent' => ContentManagerSetting::get(self::homePageContentKey($loc), ''),
-            'homeMetaTitle' => ContentManagerSetting::get(self::KEY_HOME_META_TITLE, ''),
-            'homeMetaDescription' => ContentManagerSetting::get(self::KEY_HOME_META_DESCRIPTION, ''),
-            'homeMetaKeywords' => ContentManagerSetting::get(self::KEY_HOME_META_KEYWORDS, ''),
-            'homeFocusKeyword' => ContentManagerSetting::get(self::KEY_HOME_FOCUS_KEYWORD, ''),
-            'homeOgTitle' => ContentManagerSetting::get(self::KEY_HOME_OG_TITLE, ''),
-            'homeOgDescription' => ContentManagerSetting::get(self::KEY_HOME_OG_DESCRIPTION, ''),
-            'homeOgImage' => ContentManagerSetting::get(self::KEY_HOME_OG_IMAGE, ''),
-            'homeMetaRobots' => ContentManagerSetting::get(self::KEY_HOME_META_ROBOTS, 'index,follow'),
-            'homeCanonicalUrl' => ContentManagerSetting::get(self::KEY_HOME_CANONICAL_URL, ''),
-            'homeFrontendHeadSnippet' => ContentManagerSetting::get(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, ''),
+            'homeMetaTitle' => self::getLocalized(self::KEY_HOME_META_TITLE, $loc),
+            'homeMetaDescription' => self::getLocalized(self::KEY_HOME_META_DESCRIPTION, $loc),
+            'homeMetaKeywords' => self::getLocalized(self::KEY_HOME_META_KEYWORDS, $loc),
+            'homeFocusKeyword' => self::getLocalized(self::KEY_HOME_FOCUS_KEYWORD, $loc),
+            'homeOgTitle' => self::getLocalized(self::KEY_HOME_OG_TITLE, $loc),
+            'homeOgDescription' => self::getLocalized(self::KEY_HOME_OG_DESCRIPTION, $loc),
+            'homeOgImage' => self::getLocalized(self::KEY_HOME_OG_IMAGE, $loc),
+            'homeMetaRobots' => self::getLocalized(self::KEY_HOME_META_ROBOTS, $loc) ?: 'index,follow',
+            'homeCanonicalUrl' => self::getLocalized(self::KEY_HOME_CANONICAL_URL, $loc),
+            'homeFrontendHeadSnippet' => self::getLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc),
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -77,6 +106,7 @@ class ContentManagerController extends Controller
     public function homeSeoUpdate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'meta_title'       => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords'    => 'nullable|string|max:255',
@@ -84,23 +114,24 @@ class ContentManagerController extends Controller
             'og_title'         => 'nullable|string|max:255',
             'og_description'   => 'nullable|string|max:500',
             'og_image'         => 'nullable|string|max:2048',
-            'meta_robots'      => ['nullable', 'string', \Illuminate\Validation\Rule::in([
+            'meta_robots'      => ['nullable', 'string', Rule::in([
                 'index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow',
             ])],
             'canonical_url'    => 'nullable|string|max:500',
             'frontend_head_snippet' => 'nullable|string|max:65535',
         ]);
 
-        ContentManagerSetting::set(self::KEY_HOME_META_TITLE,       $validated['meta_title']       ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_META_DESCRIPTION, $validated['meta_description'] ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_META_KEYWORDS,    $validated['meta_keywords']    ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_FOCUS_KEYWORD,    $validated['focus_keyword']    ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_OG_TITLE,         $validated['og_title']         ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_OG_DESCRIPTION,   $validated['og_description']   ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_OG_IMAGE,         $validated['og_image']         ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_META_ROBOTS,      $validated['meta_robots']      ?? 'index,follow');
-        ContentManagerSetting::set(self::KEY_HOME_CANONICAL_URL,    $validated['canonical_url']    ?? '');
-        ContentManagerSetting::set(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $validated['frontend_head_snippet'] ?? '');
+        $loc = ContentLocales::normalize($validated['locale']);
+        self::setLocalized(self::KEY_HOME_META_TITLE, $loc, $validated['meta_title'] ?? '');
+        self::setLocalized(self::KEY_HOME_META_DESCRIPTION, $loc, $validated['meta_description'] ?? '');
+        self::setLocalized(self::KEY_HOME_META_KEYWORDS, $loc, $validated['meta_keywords'] ?? '');
+        self::setLocalized(self::KEY_HOME_FOCUS_KEYWORD, $loc, $validated['focus_keyword'] ?? '');
+        self::setLocalized(self::KEY_HOME_OG_TITLE, $loc, $validated['og_title'] ?? '');
+        self::setLocalized(self::KEY_HOME_OG_DESCRIPTION, $loc, $validated['og_description'] ?? '');
+        self::setLocalized(self::KEY_HOME_OG_IMAGE, $loc, $validated['og_image'] ?? '');
+        self::setLocalized(self::KEY_HOME_META_ROBOTS, $loc, $validated['meta_robots'] ?? 'index,follow');
+        self::setLocalized(self::KEY_HOME_CANONICAL_URL, $loc, $validated['canonical_url'] ?? '');
+        self::setLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc, $validated['frontend_head_snippet'] ?? '');
 
         return back()->with('success', 'Home page meta tags & SEO saved.');
     }
@@ -121,12 +152,15 @@ class ContentManagerController extends Controller
         ]);
     }
 
-    public function contact(): Response
+    public function contact(Request $request): Response
     {
+        $loc = $this->contentEditorLocale($request);
+
         return Inertia::render('ContentManager/ContactPage', [
-            'contactEmail' => ContentManagerSetting::get(self::KEY_CONTACT_EMAIL, ''),
-            'contactPhone' => ContentManagerSetting::get(self::KEY_CONTACT_PHONE, ''),
-            'contactAddress' => ContentManagerSetting::get(self::KEY_CONTACT_ADDRESS, ''),
+            'contentLocale' => $loc,
+            'contactEmail' => self::getLocalized(self::KEY_CONTACT_EMAIL, $loc),
+            'contactPhone' => self::getLocalized(self::KEY_CONTACT_PHONE, $loc),
+            'contactAddress' => self::getLocalized(self::KEY_CONTACT_ADDRESS, $loc),
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -134,21 +168,26 @@ class ContentManagerController extends Controller
     public function contactUpdate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'contact_email' => 'nullable|email',
             'contact_phone' => 'nullable|string|max:64',
             'contact_address' => 'nullable|string|max:500',
         ]);
-        ContentManagerSetting::set(self::KEY_CONTACT_EMAIL, $validated['contact_email'] ?? '');
-        ContentManagerSetting::set(self::KEY_CONTACT_PHONE, $validated['contact_phone'] ?? '');
-        ContentManagerSetting::set(self::KEY_CONTACT_ADDRESS, $validated['contact_address'] ?? '');
+        $loc = ContentLocales::normalize($validated['locale']);
+        self::setLocalized(self::KEY_CONTACT_EMAIL, $loc, $validated['contact_email'] ?? '');
+        self::setLocalized(self::KEY_CONTACT_PHONE, $loc, $validated['contact_phone'] ?? '');
+        self::setLocalized(self::KEY_CONTACT_ADDRESS, $loc, $validated['contact_address'] ?? '');
 
         return back()->with('success', 'Contact details saved.');
     }
 
-    public function terms(): Response
+    public function terms(Request $request): Response
     {
+        $loc = $this->contentEditorLocale($request);
+
         return Inertia::render('ContentManager/TermsPage', [
-            'termsContent' => ContentManagerSetting::get(self::KEY_TERMS_CONTENT, ''),
+            'contentLocale' => $loc,
+            'termsContent' => self::getLocalized(self::KEY_TERMS_CONTENT, $loc),
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -156,33 +195,44 @@ class ContentManagerController extends Controller
     public function termsUpdate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'terms_content' => 'nullable|string|max:100000',
         ]);
-        ContentManagerSetting::set(self::KEY_TERMS_CONTENT, $validated['terms_content'] ?? '');
+        self::setLocalized(
+            self::KEY_TERMS_CONTENT,
+            ContentLocales::normalize($validated['locale']),
+            $validated['terms_content'] ?? ''
+        );
 
         return back()->with('success', 'Terms and conditions saved.');
     }
 
     /** Generic legal/content page: show editor (same pattern as terms). */
-    private function legalPageResponse(string $key, string $view): Response
+    private function legalPageResponse(Request $request, string $key, string $view): Response
     {
+        $loc = $this->contentEditorLocale($request);
+
         return Inertia::render($view, [
-            'content' => ContentManagerSetting::get($key, ''),
+            'contentLocale' => $loc,
+            'content' => self::getLocalized($key, $loc),
             'flash' => ['success' => session('success')],
         ]);
     }
 
     private function legalPageUpdate(Request $request, string $key, string $field, string $successMessage): RedirectResponse
     {
-        $validated = $request->validate([$field => 'nullable|string|max:100000']);
-        ContentManagerSetting::set($key, $validated[$field] ?? '');
+        $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
+            $field => 'nullable|string|max:100000',
+        ]);
+        self::setLocalized($key, ContentLocales::normalize($validated['locale']), $validated[$field] ?? '');
 
         return back()->with('success', $successMessage);
     }
 
-    public function privacyPolicy(): Response
+    public function privacyPolicy(Request $request): Response
     {
-        return $this->legalPageResponse(self::KEY_PRIVACY_POLICY_CONTENT, 'ContentManager/PrivacyPolicyPage');
+        return $this->legalPageResponse($request, self::KEY_PRIVACY_POLICY_CONTENT, 'ContentManager/PrivacyPolicyPage');
     }
 
     public function privacyPolicyUpdate(Request $request): RedirectResponse
@@ -190,9 +240,9 @@ class ContentManagerController extends Controller
         return $this->legalPageUpdate($request, self::KEY_PRIVACY_POLICY_CONTENT, 'content', 'Privacy policy saved.');
     }
 
-    public function disclaimer(): Response
+    public function disclaimer(Request $request): Response
     {
-        return $this->legalPageResponse(self::KEY_DISCLAIMER_CONTENT, 'ContentManager/DisclaimerPage');
+        return $this->legalPageResponse($request, self::KEY_DISCLAIMER_CONTENT, 'ContentManager/DisclaimerPage');
     }
 
     public function disclaimerUpdate(Request $request): RedirectResponse
@@ -200,9 +250,9 @@ class ContentManagerController extends Controller
         return $this->legalPageUpdate($request, self::KEY_DISCLAIMER_CONTENT, 'content', 'Disclaimer saved.');
     }
 
-    public function aboutUs(): Response
+    public function aboutUs(Request $request): Response
     {
-        return $this->legalPageResponse(self::KEY_ABOUT_US_CONTENT, 'ContentManager/AboutUsPage');
+        return $this->legalPageResponse($request, self::KEY_ABOUT_US_CONTENT, 'ContentManager/AboutUsPage');
     }
 
     public function aboutUsUpdate(Request $request): RedirectResponse
@@ -210,9 +260,9 @@ class ContentManagerController extends Controller
         return $this->legalPageUpdate($request, self::KEY_ABOUT_US_CONTENT, 'content', 'About us saved.');
     }
 
-    public function cookiePolicy(): Response
+    public function cookiePolicy(Request $request): Response
     {
-        return $this->legalPageResponse(self::KEY_COOKIE_POLICY_CONTENT, 'ContentManager/CookiePolicyPage');
+        return $this->legalPageResponse($request, self::KEY_COOKIE_POLICY_CONTENT, 'ContentManager/CookiePolicyPage');
     }
 
     public function cookiePolicyUpdate(Request $request): RedirectResponse
@@ -223,24 +273,25 @@ class ContentManagerController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'home_page_content' => 'nullable|string',
             'contact_email' => 'nullable|email',
             'contact_phone' => 'nullable|string|max:64',
             'contact_address' => 'nullable|string|max:500',
         ]);
 
+        $loc = ContentLocales::normalize($validated['locale']);
         if (array_key_exists('home_page_content', $validated)) {
-            $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
             ContentManagerSetting::set(self::homePageContentKey($loc), $validated['home_page_content'] ?? '');
         }
         if (array_key_exists('contact_email', $validated)) {
-            ContentManagerSetting::set(self::KEY_CONTACT_EMAIL, $validated['contact_email'] ?? '');
+            self::setLocalized(self::KEY_CONTACT_EMAIL, $loc, $validated['contact_email'] ?? '');
         }
         if (array_key_exists('contact_phone', $validated)) {
-            ContentManagerSetting::set(self::KEY_CONTACT_PHONE, $validated['contact_phone'] ?? '');
+            self::setLocalized(self::KEY_CONTACT_PHONE, $loc, $validated['contact_phone'] ?? '');
         }
         if (array_key_exists('contact_address', $validated)) {
-            ContentManagerSetting::set(self::KEY_CONTACT_ADDRESS, $validated['contact_address'] ?? '');
+            self::setLocalized(self::KEY_CONTACT_ADDRESS, $loc, $validated['contact_address'] ?? '');
         }
 
         return back()->with('success', 'Content manager settings saved.');

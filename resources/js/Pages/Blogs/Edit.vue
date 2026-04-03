@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -22,6 +23,7 @@ const STATUS_OPTIONS = [
 ];
 
 const form = reactive({
+  locale: 'id',
   title: '',
   slug: '',
   excerpt: '',
@@ -58,6 +60,7 @@ function toDatetimeLocal(iso) {
 
 onMounted(async () => {
   if (props.blog) {
+    form.locale = props.blog.locale ?? 'id';
     form.title = props.blog.title ?? '';
     form.slug = props.blog.slug ?? '';
     form.excerpt = props.blog.excerpt ?? '';
@@ -77,6 +80,7 @@ onMounted(async () => {
   try {
     const { data } = await window.axios.get(`/api/blogs/${blogIdNum.value}/edit`);
     const b = data.blog ?? {};
+    form.locale = b.locale ?? 'id';
     form.title = b.title ?? '';
     form.slug = b.slug ?? '';
     form.excerpt = b.excerpt ?? '';
@@ -147,6 +151,14 @@ async function submit() {
             <Link :href="route('blogs.index')" class="ms-2">Back to blogs</Link>
           </div>
           <form id="edit-blog-form" v-else key="form" @submit.prevent="submit" class="admin-form-smooth">
+            <div class="mb-3">
+              <CmsLocaleSelect
+                :model-value="form.locale"
+                id="blog-edit-locale"
+                @update:model-value="(v) => (form.locale = v)"
+              />
+              <InputError :message="errors.locale?.[0]" />
+            </div>
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <LabelWithTooltip for="title" value="Title" required />

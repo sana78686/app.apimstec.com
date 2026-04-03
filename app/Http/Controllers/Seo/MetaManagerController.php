@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Support\ContentLocales;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,23 +15,31 @@ class MetaManagerController extends Controller
      * List only pages whose meta tags are set. Include seo_status: ok (green), warning (yellow), error (red).
      * Rules: title 30-60 chars, description 120-160 chars = ok; title < 20 or desc < 100 = error; else warning.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $pages = Page::orderBy('title')
+        $loc = ContentLocales::normalize(
+            $request->query('locale') ?? $request->session()->get('cms_locale')
+        );
+
+        $pages = Page::query()
+            ->where('locale', $loc)
+            ->orderBy('title')
             ->where(function ($q) {
                 $q->whereNotNull('meta_title')->where('meta_title', '!=', '')
                     ->orWhereNotNull('meta_description')->where('meta_description', '!=', '');
             })
-            ->get(['id', 'title', 'slug', 'meta_title', 'meta_description'])
+            ->get(['id', 'title', 'slug', 'locale', 'meta_title', 'meta_description'])
             ->map(fn (Page $p) => [
                 'id' => $p->id,
                 'title' => $p->title,
                 'slug' => $p->slug,
+                'locale' => $p->locale ?? ContentLocales::DEFAULT,
                 'meta_done' => true,
                 'seo_status' => $this->seoStatusForPage($p),
             ]);
 
         return Inertia::render('Seo/MetaManager/Index', [
+            'filterLocale' => $loc,
             'pages' => $pages,
         ]);
     }
@@ -54,16 +63,21 @@ class MetaManagerController extends Controller
      */
     public function create(Request $request): Response
     {
-        $pages = Page::orderBy('title')->get(['id', 'title', 'slug'])->map(fn ($p) => [
+        $loc = ContentLocales::normalize(
+            $request->query('locale') ?? $request->session()->get('cms_locale')
+        );
+
+        $pages = Page::where('locale', $loc)->orderBy('title')->get(['id', 'title', 'slug', 'locale'])->map(fn ($p) => [
             'id' => $p->id,
             'title' => $p->title,
             'slug' => $p->slug,
+            'locale' => $p->locale ?? ContentLocales::DEFAULT,
         ]);
 
         $selectedPage = null;
         $pageId = $request->integer('page_id');
         if ($pageId > 0) {
-            $page = Page::find($pageId);
+            $page = Page::where('locale', $loc)->whereKey($pageId)->first();
             if ($page) {
                 $contentStripped = $page->content
                     ? trim(preg_replace('/\s+/', ' ', strip_tags($page->content)))
@@ -86,6 +100,7 @@ class MetaManagerController extends Controller
         }
 
         return Inertia::render('Seo/MetaManager/Create', [
+            'filterLocale' => $loc,
             'pages' => $pages,
             'selectedPage' => $selectedPage,
         ]);

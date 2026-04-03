@@ -1,12 +1,16 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+
+const page = usePage();
+const defaultLocale = () => page.props.cmsLocale || 'id';
 
 /** Icon key → emoji (how it looks on the frontend). Used in CMS to preview. */
 const ICON_EMOJI = {
@@ -50,12 +54,14 @@ const showAddModal = ref(false);
 const editingId = ref(null);
 
 const addForm = useForm({
+  locale: defaultLocale(),
   title: '',
   description: '',
   icon: '',
 });
 
 const editForm = useForm({
+  locale: defaultLocale(),
   title: '',
   description: '',
   icon: '',
@@ -64,12 +70,14 @@ const editForm = useForm({
 function openAdd() {
   addForm.reset();
   addForm.clearErrors();
+  addForm.locale = defaultLocale();
   addForm.icon = iconOptionsList.value[0]?.value ?? '';
   showAddModal.value = true;
   editingId.value = null;
 }
 
 function openEdit(card) {
+  editForm.locale = card.locale ?? defaultLocale();
   editForm.title = card.title;
   editForm.description = card.description ?? '';
   editForm.icon = card.icon ?? (iconOptionsList.value[0]?.value ?? '');
@@ -155,7 +163,10 @@ function iconEmoji(iconKey) {
                 <div class="d-flex align-items-start gap-2">
                   <span class="card-icon-preview" :title="iconLabel(card.icon)" aria-hidden="true">{{ iconEmoji(card.icon) }}</span>
                   <div>
-                    <strong>{{ card.title }}</strong>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span class="badge text-bg-light text-uppercase">{{ card.locale }}</span>
+                      <strong>{{ card.title }}</strong>
+                    </div>
                     <p class="text-muted small mb-0 mt-1">{{ card.description }}</p>
                   </div>
                 </div>
@@ -165,6 +176,9 @@ function iconEmoji(iconKey) {
                 </div>
               </div>
               <div v-else>
+                <div class="mb-2">
+                  <CmsLocaleSelect v-model="editForm.locale" id="card-edit-locale" :error="editForm.errors.locale" />
+                </div>
                 <div class="mb-2">
                   <label class="form-label small">Title</label>
                   <TextInput v-model="editForm.title" class="form-control form-control-sm" />
@@ -220,6 +234,9 @@ function iconEmoji(iconKey) {
       <div class="p-4">
         <h3 class="h6 mb-3">Add new card</h3>
         <form @submit.prevent="submitAdd">
+          <div class="mb-3">
+            <CmsLocaleSelect v-model="addForm.locale" id="card-add-locale" :error="addForm.errors.locale" />
+          </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Title</label>
             <TextInput v-model="addForm.title" class="form-control" placeholder="e.g. Fast compression" />
