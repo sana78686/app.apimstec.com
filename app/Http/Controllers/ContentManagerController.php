@@ -8,6 +8,7 @@ use App\Models\HomeCard;
 use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -109,7 +110,7 @@ class ContentManagerController extends Controller
             'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
             'meta_title'       => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
-            'meta_keywords'    => 'nullable|string|max:255',
+            'meta_keywords'    => 'nullable|string|max:2000',
             'focus_keyword'    => 'nullable|string|max:255',
             'og_title'         => 'nullable|string|max:255',
             'og_description'   => 'nullable|string|max:500',
@@ -132,6 +133,8 @@ class ContentManagerController extends Controller
         self::setLocalized(self::KEY_HOME_META_ROBOTS, $loc, $validated['meta_robots'] ?? 'index,follow');
         self::setLocalized(self::KEY_HOME_CANONICAL_URL, $loc, $validated['canonical_url'] ?? '');
         self::setLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc, $validated['frontend_head_snippet'] ?? '');
+
+        self::bumpPublicApiCacheGeneration();
 
         return back()->with('success', 'Home page meta tags & SEO saved.');
     }
@@ -283,6 +286,7 @@ class ContentManagerController extends Controller
         $loc = ContentLocales::normalize($validated['locale']);
         if (array_key_exists('home_page_content', $validated)) {
             ContentManagerSetting::set(self::homePageContentKey($loc), $validated['home_page_content'] ?? '');
+            self::bumpPublicApiCacheGeneration();
         }
         if (array_key_exists('contact_email', $validated)) {
             self::setLocalized(self::KEY_CONTACT_EMAIL, $loc, $validated['contact_email'] ?? '');
@@ -295,5 +299,14 @@ class ContentManagerController extends Controller
         }
 
         return back()->with('success', 'Content manager settings saved.');
+    }
+
+    /**
+     * Invalidate cached GET /api/public/* responses so home-content and other JSON update immediately.
+     */
+    public static function bumpPublicApiCacheGeneration(): void
+    {
+        $k = 'public_api:invalidate_generation';
+        Cache::put($k, (int) Cache::get($k, 0) + 1);
     }
 }

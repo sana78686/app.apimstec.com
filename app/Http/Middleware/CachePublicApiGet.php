@@ -67,8 +67,9 @@ class CachePublicApiGet
     private function cacheKey(Request $request): string
     {
         $pathPart = $request->path().'?'.$request->getQueryString();
+        $gen = (int) Cache::get('public_api:invalidate_generation', 0);
 
-        return 'public_api:v1:'.hash('sha256', $pathPart);
+        return 'public_api:v2:'.$gen.':'.hash('sha256', $pathPart);
     }
 
     /**

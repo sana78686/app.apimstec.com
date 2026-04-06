@@ -112,6 +112,8 @@ class AnalyticsController extends Controller
             $validated['frontend_head_snippet'] ?? ''
         );
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         return back()->with('success', 'Analytics settings saved.');
     }
 }
