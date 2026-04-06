@@ -52,15 +52,9 @@ class HandleInertiaRequests extends Middleware
 
         $cmsLocale = ContentLocales::resolveCmsWorkspaceLocale($request);
 
-        $ziggy = (new Ziggy)->toArray();
-        $ziggy['defaults'] = array_merge(
-            (array) ($ziggy['defaults'] ?? []),
-            ['cms_locale' => $cmsLocale],
-        );
-
         return [
             ...parent::share($request),
-            'ziggy' => $ziggy,
+            'ziggy' => (new Ziggy)->toArray(),
             'cmsLocale' => $cmsLocale,
             'cmsLocales' => ContentLocales::SUPPORTED,
             'cmsLocaleOptions' => ContentLocales::options(),

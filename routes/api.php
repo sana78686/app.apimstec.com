@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 // (403 + “no CORS header” in the browser). Named api.legacy.public.* to avoid clashing with api.public.*.
 
 Route::prefix('public')->name('api.legacy.public.')->group(function () {
+    Route::get('content-locales', [PublicApiController::class, 'contentLocales'])->name('content-locales');
     Route::get('pages', [PublicApiController::class, 'pages'])->name('pages');
     Route::get('pages/{slug}', [PublicApiController::class, 'pageBySlug'])->name('pages.show');
     Route::get('blogs', [PublicApiController::class, 'blogs'])->name('blogs');

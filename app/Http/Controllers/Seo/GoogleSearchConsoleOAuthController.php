@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Seo;
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsSetting;
 use App\Services\GoogleSearchConsoleService;
-use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -23,13 +22,11 @@ class GoogleSearchConsoleOAuthController extends Controller
     public function redirect(Request $request, GoogleSearchConsoleService $gsc): RedirectResponse
     {
         if (! $gsc->isConfigured()) {
-            return $this->backToAnalytics($request, 'error', 'Google OAuth is not configured on the server (missing GOOGLE_CLIENT_ID / secret / redirect URI).');
+            return $this->backToAnalytics('error', 'Google OAuth is not configured on the server (missing GOOGLE_CLIENT_ID / secret / redirect URI).');
         }
 
-        $locale = ContentLocales::normalize((string) $request->route('cms_locale'));
         $state = Crypt::encryptString(json_encode([
             'uid' => $request->user()->id,
-            'locale' => $locale,
             'nonce' => Str::random(40),
         ], JSON_THROW_ON_ERROR));
 
@@ -51,7 +48,6 @@ class GoogleSearchConsoleOAuthController extends Controller
     {
         if ($request->filled('error')) {
             return $this->redirectWithFlash(
-                ContentLocales::normalize((string) $request->session()->get('cms_locale')),
                 'error',
                 'Google authorization was denied or failed: '.(string) $request->query('error')
             );
@@ -61,7 +57,6 @@ class GoogleSearchConsoleOAuthController extends Controller
         $state = (string) $request->query('state', '');
         if ($code === '' || $state === '') {
             return $this->redirectWithFlash(
-                ContentLocales::normalize((string) $request->session()->get('cms_locale')),
                 'error',
                 'Invalid OAuth callback (missing code or state).'
             );
@@ -71,7 +66,6 @@ class GoogleSearchConsoleOAuthController extends Controller
             $payload = json_decode(Crypt::decryptString($state), true, 512, JSON_THROW_ON_ERROR);
         } catch (\Throwable) {
             return $this->redirectWithFlash(
-                ContentLocales::normalize((string) $request->session()->get('cms_locale')),
                 'error',
                 'Invalid OAuth state. Try connecting again.'
             );
@@ -79,16 +73,13 @@ class GoogleSearchConsoleOAuthController extends Controller
 
         if (! is_array($payload) || (int) ($payload['uid'] ?? 0) !== (int) $request->user()->id) {
             return $this->redirectWithFlash(
-                ContentLocales::normalize((string) $request->session()->get('cms_locale')),
                 'error',
                 'OAuth state does not match your session. Try again.'
             );
         }
 
-        $locale = ContentLocales::normalize((string) ($payload['locale'] ?? ''));
-
         if (! $gsc->isConfigured()) {
-            return $this->redirectWithFlash($locale, 'error', 'Google OAuth is not configured on the server.');
+            return $this->redirectWithFlash('error', 'Google OAuth is not configured on the server.');
         }
 
         $tokenRes = Http::asForm()->post(self::TOKEN_URL, [
@@ -100,13 +91,12 @@ class GoogleSearchConsoleOAuthController extends Controller
         ]);
 
         if (! $tokenRes->successful()) {
-            return $this->redirectWithFlash($locale, 'error', 'Could not exchange authorization code with Google.');
+            return $this->redirectWithFlash('error', 'Could not exchange authorization code with Google.');
         }
 
         $refresh = $tokenRes->json('refresh_token');
         if (! is_string($refresh) || $refresh === '') {
             return $this->redirectWithFlash(
-                $locale,
                 'error',
                 'Google did not return a refresh token. Revoke app access in your Google account settings and try again with prompt=consent (use “Disconnect” here first, then connect again).'
             );
@@ -134,7 +124,7 @@ class GoogleSearchConsoleOAuthController extends Controller
             AnalyticsSetting::setValue('gsc_connected_email', $email);
         }
 
-        return redirect("/{$locale}/seo/analytics")->with('success', 'Google Search Console connected. Save your property URL below if needed, then reload to see data.');
+        return redirect()->route('seo.analytics')->with('success', 'Google Search Console connected. Save your property URL below if needed, then reload to see data.');
     }
 
     public function disconnect(Request $request): RedirectResponse
@@ -144,20 +134,16 @@ class GoogleSearchConsoleOAuthController extends Controller
         AnalyticsSetting::forget('gsc_token_expires_at');
         AnalyticsSetting::forget('gsc_connected_email');
 
-        $locale = ContentLocales::normalize((string) $request->route('cms_locale'));
-
-        return redirect("/{$locale}/seo/analytics")->with('success', 'Google Search Console disconnected for this website.');
+        return redirect()->route('seo.analytics')->with('success', 'Google Search Console disconnected for this website.');
     }
 
-    private function backToAnalytics(Request $request, string $flashKey, string $message): RedirectResponse
+    private function backToAnalytics(string $flashKey, string $message): RedirectResponse
     {
-        $locale = ContentLocales::normalize((string) $request->route('cms_locale'));
-
-        return redirect("/{$locale}/seo/analytics")->with($flashKey, $message);
+        return redirect()->route('seo.analytics')->with($flashKey, $message);
     }
 
-    private function redirectWithFlash(string $locale, string $key, string $message): RedirectResponse
+    private function redirectWithFlash(string $key, string $message): RedirectResponse
     {
-        return redirect('/'.ContentLocales::normalize($locale).'/seo/analytics')->with($key, $message);
+        return redirect()->route('seo.analytics')->with($key, $message);
     }
 }

@@ -36,15 +36,10 @@ class ContentLocales
     }
 
     /**
-     * CMS UI locale: URL segment wins, then session, then cookie, else English (admin default).
+     * CMS UI locale: session, then cookie, else English (admin default). URLs no longer embed locale.
      */
     public static function resolveCmsWorkspaceLocale(Request $request): string
     {
-        $fromRoute = $request->route('cms_locale');
-        if (is_string($fromRoute) && $fromRoute !== '') {
-            return self::normalize($fromRoute);
-        }
-
         $s = $request->session()->get('cms_locale');
         if (is_string($s) && $s !== '') {
             return self::normalize($s);

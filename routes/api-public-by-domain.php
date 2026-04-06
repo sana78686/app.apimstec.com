@@ -12,6 +12,7 @@
 use App\Http\Controllers\PublicApiController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('content-locales', [PublicApiController::class, 'contentLocales'])->name('api.public.content-locales');
 Route::get('pages', [PublicApiController::class, 'pages'])->name('api.public.pages');
 Route::get('pages/{slug}', [PublicApiController::class, 'pageBySlug'])->name('api.public.pages.show');
 Route::get('blogs', [PublicApiController::class, 'blogs'])->name('api.public.blogs');

@@ -23,6 +23,87 @@ class PublicApiController extends Controller
     }
 
     /**
+     * Locales that have a visible page with this slug (for hreflang + parity checks).
+     *
+     * @return list<string>
+     */
+    private function alternateLocalesForPageSlug(string $slug): array
+    {
+        return Page::query()
+            ->where('slug', $slug)
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
+            ->whereIn('locale', ContentLocales::SUPPORTED)
+            ->pluck('locale')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * If the requested locale has no page, try other locales (same slug) for a soft redirect on the SPA.
+     */
+    private function fallbackLocaleForPageSlug(string $slug, string $requestedLocale): ?string
+    {
+        $priority = array_values(array_unique(array_merge(
+            [ContentLocales::DEFAULT_PUBLIC, ContentLocales::DEFAULT_CMS],
+            ContentLocales::SUPPORTED
+        )));
+        $priority = array_values(array_filter($priority, fn (string $l) => $l !== $requestedLocale));
+
+        foreach ($priority as $loc) {
+            $exists = Page::query()
+                ->where('slug', $slug)
+                ->where('locale', $loc)
+                ->where('visibility', Page::VISIBILITY_VISIBLE)
+                ->exists();
+            if ($exists) {
+                return $loc;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function alternateLocalesForBlogSlug(string $slug): array
+    {
+        return Blog::query()
+            ->where('slug', $slug)
+            ->where('is_published', true)
+            ->where('visibility', Blog::VISIBILITY_VISIBLE)
+            ->whereIn('locale', ContentLocales::SUPPORTED)
+            ->pluck('locale')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function fallbackLocaleForBlogSlug(string $slug, string $requestedLocale): ?string
+    {
+        $priority = array_values(array_unique(array_merge(
+            [ContentLocales::DEFAULT_PUBLIC, ContentLocales::DEFAULT_CMS],
+            ContentLocales::SUPPORTED
+        )));
+        $priority = array_values(array_filter($priority, fn (string $l) => $l !== $requestedLocale));
+
+        foreach ($priority as $loc) {
+            $exists = Blog::query()
+                ->where('slug', $slug)
+                ->where('locale', $loc)
+                ->where('is_published', true)
+                ->where('visibility', Blog::VISIBILITY_VISIBLE)
+                ->exists();
+            if ($exists) {
+                return $loc;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Inbox for the public contact form: CMS “Contact us” email, else CONTACT_FORM_MAIL_TO env.
      */
     private function contactFormMailTo(string $locale): string
@@ -137,6 +218,16 @@ class PublicApiController extends Controller
             ->first();
 
         if (! $page) {
+            $fallbackLocale = $this->fallbackLocaleForPageSlug($slug, $locale);
+            if ($fallbackLocale !== null) {
+                return response()->json([
+                    '_seo_redirect' => [
+                        'locale' => $fallbackLocale,
+                        'slug' => $slug,
+                    ],
+                ]);
+            }
+
             return response()->json(['message' => 'Page not found.'], 404);
         }
 
@@ -154,6 +245,7 @@ class PublicApiController extends Controller
             'og_image' => $page->og_image,
             'schema_type' => $page->schema_type,
             'schema_data' => $page->schema_data,
+            'alternate_locales' => $this->alternateLocalesForPageSlug($slug),
         ]);
     }
 
@@ -195,6 +287,17 @@ class PublicApiController extends Controller
             ->first();
 
         if (! $blog) {
+            $fallbackLocale = $this->fallbackLocaleForBlogSlug($slug, $locale);
+            if ($fallbackLocale !== null) {
+                return response()->json([
+                    '_seo_redirect' => [
+                        'locale' => $fallbackLocale,
+                        'slug' => $slug,
+                        'kind' => 'blog',
+                    ],
+                ]);
+            }
+
             return response()->json(['message' => 'Blog not found.'], 404);
         }
 
@@ -218,7 +321,37 @@ class PublicApiController extends Controller
             'og_image' => $blog->og_image,
             'schema_type' => $blog->schema_type,
             'schema_data' => $blog->schema_data,
+            'alternate_locales' => $this->alternateLocalesForBlogSlug($slug),
         ]);
+    }
+
+    /**
+     * Locales that have at least one visible page or published blog (for language switcher scope).
+     */
+    public function contentLocales(): JsonResponse
+    {
+        $supported = ContentLocales::SUPPORTED;
+
+        $pageLocales = Page::query()
+            ->where('visibility', Page::VISIBILITY_VISIBLE)
+            ->whereIn('locale', $supported)
+            ->distinct()
+            ->pluck('locale');
+
+        $blogLocales = Blog::query()
+            ->where('is_published', true)
+            ->where('visibility', Blog::VISIBILITY_VISIBLE)
+            ->whereIn('locale', $supported)
+            ->distinct()
+            ->pluck('locale');
+
+        $merged = $pageLocales->merge($blogLocales)->unique()->values()->all();
+
+        if ($merged === []) {
+            $merged = [ContentLocales::DEFAULT_PUBLIC];
+        }
+
+        return response()->json(['locales' => $merged]);
     }
 
     /**

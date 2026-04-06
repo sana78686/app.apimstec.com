@@ -27,24 +27,15 @@ const cmsLocaleLabels = {
   ru: 'RU · Русский',
 };
 
-const showCmsLocaleSwitcher = computed(() => {
-  if (!activeDomain.value) return false;
-  const u = (page.url || '').replace(/^\//, '');
-  return /^(id|en|ms|es|fr|ar|ru)(\/|$)/.test(u);
-});
+/** Workspace content locale (session) — lists, defaults, and API filters; add/edit forms keep their own locale fields. */
+const showCmsLocaleSwitcher = computed(() => true);
 
 const cmsLangOpen = ref(false);
 const cmsLangEl = ref(null);
 
-/** Switch CMS URL locale (same pattern as frontend /en/... → /fr/...). */
 function visitCmsLocale(l) {
-  const url = page.url || '';
-  const [pathPart, query] = url.split('?');
-  const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
-  const newPath = path.replace(/^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/, `/${l}`);
-  const target = newPath + (query ? `?${query}` : '');
   cmsLangOpen.value = false;
-  router.visit(target, { preserveScroll: true });
+  router.post(route('cms.locale'), { locale: l }, { preserveScroll: true });
 }
 
 const domainDropOpen = ref(false);
@@ -533,7 +524,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
             ref="cmsLangEl"
             class="admin-lang-dropdown"
           >
-            <span id="admin-cms-locale-label" class="visually-hidden">Content language — URLs use /en/, /fr/, … Pages and blogs save for the active locale.</span>
+            <span id="admin-cms-locale-label" class="visually-hidden">Workspace language — sets the default locale for CMS lists and new content. Public site URLs are unchanged.</span>
             <button
               type="button"
               class="admin-lang-dropdown-trigger"

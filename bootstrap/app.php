@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Public React API: reliable CORS (incl. OPTIONS preflight for X-Domain) before the stack.
         $middleware->prepend(\App\Http\Middleware\HandlePublicApiCors::class);
 
+        // Legacy /{locale}/… CMS URLs → redirect to unprefixed routes before the request is routed.
+        $middleware->prepend(\App\Http\Middleware\StripLegacyCmsLocaleUrlPrefix::class);
+
         // Tenant must run after StartSession (session('active_domain_id')).
         // Implicit route model binding (SubstituteBindings) must run AFTER TenantMiddleware so
         // Page/Blog/FaqItem/etc. query the active site's DB — otherwise bindings fail and raw
@@ -32,11 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(
             remove: [\Illuminate\Routing\Middleware\SubstituteBindings::class],
             append: [
-                \App\Http\Middleware\RedirectIfCmsMissingLocalePrefix::class,
                 \App\Http\Middleware\TenantMiddleware::class,
                 \Illuminate\Routing\Middleware\SubstituteBindings::class,
                 \App\Http\Middleware\ApplyRedirects::class,
-                \App\Http\Middleware\ApplyCmsLocaleToUrlGenerator::class,
                 \App\Http\Middleware\HandleInertiaRequests::class,
                 \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             ],

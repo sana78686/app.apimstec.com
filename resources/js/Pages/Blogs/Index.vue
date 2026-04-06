@@ -1,22 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Pagination from '@/Components/Pagination.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
-const CMS_LOCALE_PATH_RE = /^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/;
-
-const inertiaPage = usePage();
-
-const cmsLocale = computed(() => {
-  const fromProps = inertiaPage.props.cmsLocale;
-  if (fromProps) return fromProps;
-  if (typeof window !== 'undefined') {
-    const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
-    if (m) return m[1];
-  }
-  return 'en';
-});
 const blogs = ref([]);
 const loading = ref(true);
 const successMessage = ref('');
@@ -100,12 +87,17 @@ async function changeStatus(b, newVisibility) {
     <div class="admin-list-page">
       <p v-if="successMessage" class="admin-flash admin-flash-success">{{ successMessage }}</p>
 
+      <div class="alert alert-secondary small mb-3" role="status">
+        <strong>SEO &amp; locales:</strong> Public posts use <code>/{locale}/blog/{slug}</code>. Create the same slug in each language you support, or readers on that locale will see a redirect/404.
+        Use the header workspace language or the locale field when creating posts.
+      </div>
+
       <div class="admin-list-page-header">
         <div>
           <h1 class="admin-list-page-title">Blogs</h1>
           <p class="admin-list-page-desc">Blog posts and articles.</p>
         </div>
-        <Link :href="route('blogs.create', { cms_locale: cmsLocale })" class="admin-list-page-cta">
+        <Link :href="route('blogs.create')" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -167,7 +159,7 @@ async function changeStatus(b, newVisibility) {
                 </select>
               </td>
               <td>
-                <Link :href="`/${cmsLocale}/blogs/edit/${b.id}`" class="admin-list-link">Edit</Link>
+                <Link :href="route('blogs.edit', { cmsBlog: b.id })" class="admin-list-link">Edit</Link>
                 <button
                   type="button"
                   class="admin-list-link admin-list-link-danger"

@@ -1,23 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Pagination from '@/Components/Pagination.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
-const CMS_LOCALE_PATH_RE = /^\/(id|en|ms|es|fr|ar|ru)(?=\/|$)/;
-
-const inertiaPage = usePage();
-
-/** Match URL segment so edit links never omit /{locale}/ (Ziggy can mis-resolve params named `page`). */
-const cmsLocale = computed(() => {
-  const fromProps = inertiaPage.props.cmsLocale;
-  if (fromProps) return fromProps;
-  if (typeof window !== 'undefined') {
-    const m = String(window.location.pathname || '').match(CMS_LOCALE_PATH_RE);
-    if (m) return m[1];
-  }
-  return 'en';
-});
 const pages = ref([]);
 const loading = ref(true);
 const successMessage = ref('');
@@ -130,12 +116,17 @@ async function destroy(p) {
     <div class="admin-list-page">
       <p v-if="successMessage" class="admin-flash admin-flash-success">{{ successMessage }}</p>
 
+      <div class="alert alert-secondary small mb-3" role="status">
+        <strong>SEO &amp; locales:</strong> Public URLs stay <code>/{locale}/page/{slug}</code> on the marketing site. Each row is one locale — duplicate important slugs per language.
+        Use the header workspace language or the locale field on each form. After publishing, clear cache in dev (<code>VITE_CMS_CACHE_MS</code>) or wait for the client TTL.
+      </div>
+
       <div class="admin-list-page-header">
         <div>
           <h1 class="admin-list-page-title">Pages</h1>
           <p class="admin-list-page-desc">Website pages for header/footer (e.g. FAQ, Contact us). Child pages appear under their parent on the frontend.</p>
         </div>
-        <Link :href="route('pages.create', { cms_locale: cmsLocale })" class="admin-list-page-cta">
+        <Link :href="route('pages.create')" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -206,9 +197,9 @@ async function destroy(p) {
                 </select>
               </td>
               <td>
-                <Link :href="`/${cmsLocale}/pages/edit/${p.id}`" class="admin-list-link">Edit</Link>
+                <Link :href="route('pages.edit', { cmsPage: p.id })" class="admin-list-link">Edit</Link>
                 <Link
-                  :href="route('seo.meta-manager.create', { cms_locale: cmsLocale, page_id: p.id, locale: p.locale })"
+                  :href="route('seo.meta-manager.create', { page_id: p.id, locale: p.locale })"
                   class="admin-list-link"
                 >
                   Edit SEO

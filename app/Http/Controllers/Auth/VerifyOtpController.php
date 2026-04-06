@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Support\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -21,9 +20,8 @@ class VerifyOtpController extends Controller
         ]);
 
         $user = $request->user();
-        $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
         if ($user->hasVerifiedEmail()) {
-            return redirect()->intended(route('dashboard', ['cms_locale' => $loc], absolute: false));
+            return redirect()->intended(route('dashboard', absolute: false));
         }
 
         $cacheKey = 'verification_otp:' . $user->getKey();
@@ -38,6 +36,6 @@ class VerifyOtpController extends Controller
         $user->markEmailAsVerified();
         Cache::forget($cacheKey);
 
-        return redirect()->intended(route('dashboard', ['cms_locale' => $loc], absolute: false).'?verified=1');
+        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
     }
 }

@@ -26,8 +26,6 @@ use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\CmsLocaleController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SitemapController;
-use App\Http\Middleware\SyncCmsLocaleFromUrl;
-use App\Support\ContentLocales;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,9 +38,7 @@ Route::get('/', function () {
         return redirect()->route('domains.select');
     }
 
-    $loc = ContentLocales::resolveCmsWorkspaceLocale(request());
-
-    return redirect("/{$loc}/dashboard");
+    return redirect()->route('dashboard');
 });
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
@@ -78,41 +74,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
     Route::post('/domains/switch', [DomainController::class, 'switchDomain'])->name('domains.switch');
     Route::post('/domains/test-connection', [DomainController::class, 'testConnection'])->name('domains.test-connection');
+    Route::post('/cms-locale', [CmsLocaleController::class, 'update'])->name('cms.locale');
 });
-
-$cmsLocaleWhere = implode('|', ContentLocales::SUPPORTED);
 
 /*
 |--------------------------------------------------------------------------
-| CMS workspace: /{en|ms|…}/… — locale syncs session for API + content saves
+| CMS workspace (session cms_locale — no /{locale}/ URL prefix)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::class])
-    ->prefix('{cms_locale}')
-    ->where(['cms_locale' => $cmsLocaleWhere])
-    ->group(function () {
-        Route::get('/dashboard', function () {
-            return Inertia::render('Dashboard');
-        })->name('dashboard');
+Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 
-        Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
-        Route::get('/domains/{domain}/edit', [DomainController::class, 'edit'])->name('domains.edit');
-        Route::put('/domains/{domain}', [DomainController::class, 'update'])->name('domains.update');
-        Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])
-            ->middleware('permission:domains.delete')
-            ->name('domains.destroy');
-        Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])
-            ->middleware('permission:domains.schema.commands')
-            ->name('domains.sync-schema');
-        Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])
-            ->middleware('permission:domains.schema.commands')
-            ->name('domains.migrate-fresh');
-        Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])
-            ->middleware('permission:domains.schema.commands')
-            ->name('domains.rollback-schema');
-        Route::post('/domains/{domain}/test-connection', [DomainController::class, 'testSavedConnection'])->name('domains.test-saved-connection');
+    Route::get('/domains', [DomainController::class, 'index'])->name('domains.index');
+    Route::get('/domains/{domain}/edit', [DomainController::class, 'edit'])
+        ->whereNumber('domain')
+        ->name('domains.edit');
+    Route::put('/domains/{domain}', [DomainController::class, 'update'])
+        ->whereNumber('domain')
+        ->name('domains.update');
+    Route::delete('/domains/{domain}', [DomainController::class, 'destroy'])
+        ->whereNumber('domain')
+        ->middleware('permission:domains.delete')
+        ->name('domains.destroy');
+    Route::post('/domains/{domain}/sync-schema', [DomainController::class, 'syncSchema'])
+        ->whereNumber('domain')
+        ->middleware('permission:domains.schema.commands')
+        ->name('domains.sync-schema');
+    Route::post('/domains/{domain}/migrate-fresh', [DomainController::class, 'migrateFresh'])
+        ->whereNumber('domain')
+        ->middleware('permission:domains.schema.commands')
+        ->name('domains.migrate-fresh');
+    Route::post('/domains/{domain}/rollback-schema', [DomainController::class, 'rollbackSchema'])
+        ->whereNumber('domain')
+        ->middleware('permission:domains.schema.commands')
+        ->name('domains.rollback-schema');
+    Route::post('/domains/{domain}/test-connection', [DomainController::class, 'testSavedConnection'])
+        ->whereNumber('domain')
+        ->name('domains.test-saved-connection');
 
-        Route::prefix('credentials')->name('credentials.')->group(function () {
+    Route::prefix('credentials')->name('credentials.')->group(function () {
             Route::get('/', [CredentialController::class, 'index'])->name('index');
             Route::get('/create', [CredentialController::class, 'create'])->name('create');
             Route::post('/', [CredentialController::class, 'store'])->name('store');
@@ -122,7 +124,6 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
         });
 
         Route::prefix('content-manager')->name('content-manager.')->group(function () {
-            Route::post('/locale', [CmsLocaleController::class, 'update'])->name('locale');
             Route::get('/', [ContentManagerController::class, 'index'])->name('index');
             Route::put('/', [ContentManagerController::class, 'update'])->name('update');
             Route::put('/home-seo', [ContentManagerController::class, 'homeSeoUpdate'])->name('home-seo.update');
@@ -248,8 +249,8 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
             // Prefer /pages/edit/{id} — avoids {page} segment name clashes with frameworks/proxies; canonical for Ziggy/Inertia.
             Route::get('/edit/{cmsPage}', [PageController::class, 'edit'])->whereNumber('cmsPage')->name('edit');
             // Legacy bookmark: /pages/1/edit → /pages/edit/1
-            Route::get('/{legacyPage}/edit', function (string $cms_locale, string $legacyPage) {
-                return redirect()->route('pages.edit', ['cms_locale' => $cms_locale, 'cmsPage' => $legacyPage], 302);
+            Route::get('/{legacyPage}/edit', function (string $legacyPage) {
+                return redirect()->route('pages.edit', ['cmsPage' => $legacyPage], 302);
             })->whereNumber('legacyPage')->name('edit.legacy');
             Route::get('/{page}/seo', fn (int|string $page) => redirect()->route('seo.meta-manager.create', ['page_id' => (int) $page]))
                 ->whereNumber('page')
@@ -260,10 +261,10 @@ Route::middleware(['auth', 'verified', 'active.domain', SyncCmsLocaleFromUrl::cl
             Route::get('/', [BlogController::class, 'index'])->name('index');
             Route::get('/create', [BlogController::class, 'create'])->name('create');
             Route::get('/edit/{cmsBlog}', [BlogController::class, 'edit'])->whereNumber('cmsBlog')->name('edit');
-            Route::get('/{legacyBlog}/edit', function (string $cms_locale, string $legacyBlog) {
-                return redirect()->route('blogs.edit', ['cms_locale' => $cms_locale, 'cmsBlog' => $legacyBlog], 302);
+            Route::get('/{legacyBlog}/edit', function (string $legacyBlog) {
+                return redirect()->route('blogs.edit', ['cmsBlog' => $legacyBlog], 302);
             })->whereNumber('legacyBlog')->name('edit.legacy');
         });
-    });
+});
 
 require __DIR__.'/auth.php';
