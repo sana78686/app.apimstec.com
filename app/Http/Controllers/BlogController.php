@@ -99,7 +99,7 @@ class BlogController extends Controller
             'meta_robots' => 'nullable|string|max:50',
             'og_title' => 'nullable|string|max:255',
             'og_description' => 'nullable|string|max:500',
-            'og_image' => 'nullable|string|max:500',
+            'og_image' => 'nullable|string|max:2048',
         ]);
 
         $loc = ContentLocales::normalize($request->input('locale'));
@@ -169,7 +169,7 @@ class BlogController extends Controller
             'meta_robots' => 'nullable|string|max:50',
             'og_title' => 'nullable|string|max:255',
             'og_description' => 'nullable|string|max:500',
-            'og_image' => 'nullable|string|max:500',
+            'og_image' => 'nullable|string|max:2048',
         ]);
 
         $loc = ContentLocales::normalize($request->input('locale'));

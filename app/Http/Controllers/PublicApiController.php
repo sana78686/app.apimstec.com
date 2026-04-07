@@ -270,6 +270,7 @@ class PublicApiController extends Controller
                 'og_title' => $b->og_title,
                 'og_description' => $b->og_description,
                 'og_image' => $b->og_image,
+                'image' => $b->og_image,
             ]);
         return response()->json(['blogs' => $blogs]);
     }
@@ -319,6 +320,7 @@ class PublicApiController extends Controller
             'og_title' => $blog->og_title ?? $blog->meta_title ?? $blog->title,
             'og_description' => $blog->og_description ?? $blog->meta_description ?? $blog->excerpt,
             'og_image' => $blog->og_image,
+            'image' => $blog->og_image,
             'schema_type' => $blog->schema_type,
             'schema_data' => $blog->schema_data,
             'alternate_locales' => $this->alternateLocalesForBlogSlug($slug),

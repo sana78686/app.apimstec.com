@@ -27,7 +27,10 @@ class MediaController extends Controller
         $dir = 'uploads/editor';
         $path = $file->storeAs($dir, $filename, 'public');
 
-        $url = Storage::disk('public')->url($path);
+        $publicPath = Storage::disk('public')->url($path);
+        $absoluteUrl = str_starts_with($publicPath, 'http://') || str_starts_with($publicPath, 'https://')
+            ? $publicPath
+            : rtrim((string) config('app.url'), '/') . '/' . ltrim($publicPath, '/');
         $relativePath = '/storage/' . $path;
 
         // Create media record so it appears in media library / image SEO
@@ -40,8 +43,10 @@ class MediaController extends Controller
         ]);
 
         return response()->json([
-            'url' => $url,
+            'url' => $absoluteUrl,
+            'absolute_url' => $absoluteUrl,
             'path' => $path,
+            'relative_url' => $publicPath,
         ]);
     }
 }

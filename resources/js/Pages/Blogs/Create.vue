@@ -5,6 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import LabelWithTooltip from '@/Components/LabelWithTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
+import BlogCoverImageInput from '@/Components/BlogCoverImageInput.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { reactive, ref } from 'vue';
@@ -158,8 +159,7 @@ async function submit() {
               <textarea id="og_description" v-model="form.og_description" class="form-control form-control-sm" rows="2" maxlength="500"></textarea>
             </div>
             <div class="col-12">
-              <LabelWithTooltip for="og_image" value="OG image URL" tip="Image URL when the article is shared (e.g. 1200×630px). Also used as the article cover on the blog list." optional />
-              <TextInput id="og_image" v-model="form.og_image" type="url" class="form-control form-control-sm" placeholder="https://example.com/image.jpg" />
+              <BlogCoverImageInput id="blog-cover-create" v-model="form.og_image" input-id="og_image" />
               <InputError :message="errors.og_image?.[0]" />
             </div>
           </div>
