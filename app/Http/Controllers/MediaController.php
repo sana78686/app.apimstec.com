@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Domain;
 use App\Models\Media;
+use App\Support\FrontendAssetUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,15 +29,19 @@ class MediaController extends Controller
         $dir = 'uploads/editor';
         $path = $file->storeAs($dir, $filename, 'public');
 
-        $publicPath = Storage::disk('public')->url($path);
-        $absoluteUrl = str_starts_with($publicPath, 'http://') || str_starts_with($publicPath, 'https://')
-            ? $publicPath
-            : rtrim((string) config('app.url'), '/') . '/' . ltrim($publicPath, '/');
-        $relativePath = '/storage/' . $path;
+        $domain = null;
+        $domainId = session('active_domain_id');
+        if ($domainId) {
+            $domain = Domain::query()->where('id', $domainId)->where('is_active', true)->first();
+        }
+
+        // Public URL on the live React site (Domain.frontend_url or https://domain), not the CMS app host.
+        $absoluteUrl = FrontendAssetUrl::uploadsPublicUrl($domain, $path);
+        $publicPath = '/'.FrontendAssetUrl::encodePath($path);
 
         // Create media record so it appears in media library / image SEO
         Media::create([
-            'path' => $relativePath,
+            'path' => '/storage/'.$path,
             'filename' => $originalName,
             'alt_text' => $request->input('alt_text'),
             'file_size' => $file->getSize(),
@@ -46,6 +52,7 @@ class MediaController extends Controller
             'url' => $absoluteUrl,
             'absolute_url' => $absoluteUrl,
             'path' => $path,
+            'public_path' => $publicPath,
             'relative_url' => $publicPath,
         ]);
     }

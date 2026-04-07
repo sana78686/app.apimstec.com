@@ -6,17 +6,37 @@ use App\Http\Controllers\ContentManagerController;
 use App\Models\AnalyticsSetting;
 use App\Models\Blog;
 use App\Models\ContentManagerSetting;
+use App\Models\Domain;
 use App\Models\FaqItem;
 use App\Models\HomeCard;
+use App\Models\Media;
 use App\Models\Page;
+use Carbon\Carbon;
 use App\Support\ContentLocales;
+use App\Support\FrontendAssetUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class PublicApiController extends Controller
 {
+    private function activeDomainModel(): ?Domain
+    {
+        return app()->bound('active_domain') ? app('active_domain') : null;
+    }
+
+    private function rewriteAssetForPublic(?string $value): ?string
+    {
+        return FrontendAssetUrl::rewriteAssetUrl($value, $this->activeDomainModel());
+    }
+
+    private function rewriteCanonicalForPublic(?string $value): ?string
+    {
+        return FrontendAssetUrl::rewritePublicPageUrl($value, $this->activeDomainModel());
+    }
+
     private function publicLocale(Request $request): string
     {
         return ContentLocales::normalize($request->query('locale'));
@@ -238,11 +258,11 @@ class PublicApiController extends Controller
             'content' => $page->content,
             'meta_title' => $page->meta_title ?? $page->title,
             'meta_description' => $page->meta_description,
-            'canonical_url' => $page->canonical_url,
+            'canonical_url' => $this->rewriteCanonicalForPublic($page->canonical_url),
             'meta_robots' => $page->meta_robots ?? $page->metaRobotsForVisibility(),
             'og_title' => $page->og_title ?? $page->meta_title ?? $page->title,
             'og_description' => $page->og_description ?? $page->meta_description,
-            'og_image' => $page->og_image,
+            'og_image' => $this->rewriteAssetForPublic($page->og_image),
             'schema_type' => $page->schema_type,
             'schema_data' => $page->schema_data,
             'alternate_locales' => $this->alternateLocalesForPageSlug($slug),
@@ -261,17 +281,21 @@ class PublicApiController extends Controller
             ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->orderBy('title')
             ->get(['id', 'title', 'slug', 'excerpt', 'published_at', 'og_title', 'og_description', 'og_image'])
-            ->map(fn ($b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'slug' => $b->slug,
-                'excerpt' => $b->excerpt,
-                'published_at' => $b->published_at?->toIso8601String(),
-                'og_title' => $b->og_title,
-                'og_description' => $b->og_description,
-                'og_image' => $b->og_image,
-                'image' => $b->og_image,
-            ]);
+            ->map(function ($b) {
+                $img = $this->rewriteAssetForPublic($b->og_image);
+
+                return [
+                    'id' => $b->id,
+                    'title' => $b->title,
+                    'slug' => $b->slug,
+                    'excerpt' => $b->excerpt,
+                    'published_at' => $b->published_at?->toIso8601String(),
+                    'og_title' => $b->og_title,
+                    'og_description' => $b->og_description,
+                    'og_image' => $img,
+                    'image' => $img,
+                ];
+            });
         return response()->json(['blogs' => $blogs]);
     }
 
@@ -315,12 +339,12 @@ class PublicApiController extends Controller
             'author' => $blog->author ? ['id' => $blog->author->id, 'name' => $blog->author->name] : null,
             'meta_title' => $blog->meta_title ?? $blog->og_title ?? $blog->title,
             'meta_description' => $blog->meta_description ?? $blog->og_description ?? $blog->excerpt,
-            'canonical_url' => $blog->canonical_url,
+            'canonical_url' => $this->rewriteCanonicalForPublic($blog->canonical_url),
             'meta_robots' => $blog->meta_robots ?? $blog->metaRobotsForVisibility(),
             'og_title' => $blog->og_title ?? $blog->meta_title ?? $blog->title,
             'og_description' => $blog->og_description ?? $blog->meta_description ?? $blog->excerpt,
-            'og_image' => $blog->og_image,
-            'image' => $blog->og_image,
+            'og_image' => $this->rewriteAssetForPublic($blog->og_image),
+            'image' => $this->rewriteAssetForPublic($blog->og_image),
             'schema_type' => $blog->schema_type,
             'schema_data' => $blog->schema_data,
             'alternate_locales' => $this->alternateLocalesForBlogSlug($slug),
@@ -386,6 +410,9 @@ class PublicApiController extends Controller
         $loc = $this->publicLocale($request);
         $contentKey = ContentManagerController::homePageContentKey($loc);
 
+        $ogHome = ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_IMAGE, $loc);
+        $canonHome = ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_CANONICAL_URL, $loc);
+
         return response()->json([
             'content'          => ContentManagerSetting::get($contentKey, ''),
             'meta_title'       => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_TITLE, $loc),
@@ -394,9 +421,9 @@ class PublicApiController extends Controller
             'focus_keyword'    => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_FOCUS_KEYWORD, $loc),
             'og_title'         => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_TITLE, $loc),
             'og_description'   => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_DESCRIPTION, $loc),
-            'og_image'         => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_IMAGE, $loc),
+            'og_image'         => $this->rewriteAssetForPublic($ogHome),
             'meta_robots'      => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_ROBOTS, $loc) ?: 'index,follow',
-            'canonical_url'    => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_CANONICAL_URL, $loc),
+            'canonical_url'    => $this->rewriteCanonicalForPublic($canonHome),
             'head_snippet'     => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc),
             'ga_measurement_id' => (string) AnalyticsSetting::getValue('ga_measurement_id', ''),
         ]);
@@ -448,5 +475,57 @@ class PublicApiController extends Controller
         $text = trim(preg_replace('/\s+/u', ' ', strip_tags($html)) ?? '');
 
         return $text !== '';
+    }
+
+    /**
+     * Single timestamp for “when any public-facing tenant content last changed”.
+     * React uses it to invalidate local JSON/session cache after CMS saves (no need to guess TTL).
+     */
+    public function contentRevision(): JsonResponse
+    {
+        $times = [];
+        foreach ([Blog::class, Page::class, FaqItem::class, HomeCard::class, Media::class, ContentManagerSetting::class] as $model) {
+            try {
+                $m = $model::query()->max('updated_at');
+                if ($m) {
+                    $times[] = Carbon::parse($m);
+                }
+            } catch (\Throwable) {
+                // Table or column missing on some tenants — ignore
+            }
+        }
+
+        $latest = $times === [] ? null : collect($times)->max();
+
+        return response()->json([
+            'revision' => $latest !== null ? $latest->getTimestamp() : 0,
+            'revision_iso' => $latest?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Serve whitelisted public-disk files (e.g. blog cover uploads) with open cross-origin headers
+     * so the React site can display them in &lt;img&gt; (direct /storage/ URLs are often blocked).
+     */
+    public function publicMedia(Request $request)
+    {
+        $path = (string) $request->query('path', '');
+        $path = str_replace('\\', '/', $path);
+        $path = trim($path, '/');
+        if ($path === '' || str_contains($path, '..')) {
+            abort(404);
+        }
+        if (! preg_match('#^uploads/editor/[A-Za-z0-9._-]+$#', $path)) {
+            abort(404);
+        }
+        if (! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Cross-Origin-Resource-Policy' => 'cross-origin',
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control' => 'public, max-age=604800',
+        ]);
     }
 }

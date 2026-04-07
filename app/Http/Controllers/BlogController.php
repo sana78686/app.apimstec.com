@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Blog;
+use App\Models\Domain;
 use App\Support\ContentLocales;
+use App\Support\FrontendAssetUrl;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -31,9 +33,21 @@ class BlogController extends Controller
         return $blog instanceof Blog ? $blog : Blog::query()->findOrFail((int) $blog);
     }
 
+    private function cmsActiveDomain(): ?Domain
+    {
+        $id = session('active_domain_id');
+        if (! $id) {
+            return null;
+        }
+
+        return Domain::query()->where('id', $id)->where('is_active', true)->first();
+    }
+
     private function blogToArray(Blog $blog): array
     {
         $blog->loadMissing('author:id,name');
+        $d = $this->cmsActiveDomain();
+
         return [
             'id' => $blog->id,
             'locale' => $blog->locale ?? ContentLocales::DEFAULT,
@@ -48,11 +62,11 @@ class BlogController extends Controller
             'visibility' => $blog->visibility,
             'meta_title' => $blog->meta_title,
             'meta_description' => $blog->meta_description,
-            'canonical_url' => $blog->canonical_url,
+            'canonical_url' => FrontendAssetUrl::rewritePublicPageUrl($blog->canonical_url, $d),
             'meta_robots' => $blog->meta_robots,
             'og_title' => $blog->og_title,
             'og_description' => $blog->og_description,
-            'og_image' => $blog->og_image,
+            'og_image' => FrontendAssetUrl::rewriteAssetUrl($blog->og_image, $d),
             'schema_type' => $blog->schema_type,
             'schema_data' => $blog->schema_data,
             'created_at' => $blog->created_at->toIso8601String(),

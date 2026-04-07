@@ -12,6 +12,8 @@
 use App\Http\Controllers\PublicApiController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('media', [PublicApiController::class, 'publicMedia'])->name('api.public.media');
+Route::get('content-revision', [PublicApiController::class, 'contentRevision'])->name('api.public.content-revision');
 Route::get('content-locales', [PublicApiController::class, 'contentLocales'])->name('api.public.content-locales');
 Route::get('pages', [PublicApiController::class, 'pages'])->name('api.public.pages');
 Route::get('pages/{slug}', [PublicApiController::class, 'pageBySlug'])->name('api.public.pages.show');

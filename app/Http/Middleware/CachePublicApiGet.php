@@ -27,6 +27,15 @@ class CachePublicApiGet
             return $next($request);
         }
 
+        // Binary files: do not cache in app cache store (large payloads, wrong Content-Type replay).
+        if (str_contains($request->path(), 'api/public/media')) {
+            return $next($request);
+        }
+
+        if (str_contains($request->path(), 'api/public/content-revision')) {
+            return $next($request);
+        }
+
         $ttl = (int) config('public_api.cache_ttl_seconds', 300);
         if ($ttl <= 0) {
             return $next($request);
