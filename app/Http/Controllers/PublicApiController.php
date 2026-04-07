@@ -258,7 +258,7 @@ class PublicApiController extends Controller
         $blogs = Blog::where('locale', $locale)
             ->where('is_published', true)
             ->where('visibility', Blog::VISIBILITY_VISIBLE)
-            ->orderBy('published_at', 'desc')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->orderBy('title')
             ->get(['id', 'title', 'slug', 'excerpt', 'published_at', 'og_title', 'og_description', 'og_image'])
             ->map(fn ($b) => [

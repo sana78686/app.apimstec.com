@@ -7,6 +7,12 @@ import vue from '@vitejs/plugin-vue';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+    server: {
+        host: '127.0.0.1',
+        port: 5173,
+        strictPort: true,
+        hmr: { host: '127.0.0.1' },
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'resources/js'),
