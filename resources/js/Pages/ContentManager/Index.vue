@@ -23,53 +23,67 @@ const props = defineProps({
   flash: { type: Object, default: () => ({}) },
 });
 
-const form = useForm({
+const homeSeoRoute = 'content-manager.home-seo.update';
+
+const contentForm = useForm({
   locale: props.contentLocale,
   home_page_content: props.homePageContent,
 });
 
-const seoForm = useForm({
+const metaForm = useForm({
   locale: props.contentLocale,
-  meta_title:       props.homeMetaTitle,
+  meta_title: props.homeMetaTitle,
   meta_description: props.homeMetaDescription,
-  meta_keywords:    props.homeMetaKeywords,
-  focus_keyword:    props.homeFocusKeyword,
-  og_title:         props.homeOgTitle,
-  og_description:   props.homeOgDescription,
-  og_image:         props.homeOgImage,
-  meta_robots:      props.homeMetaRobots || 'index,follow',
-  canonical_url:    props.homeCanonicalUrl,
+  meta_keywords: props.homeMetaKeywords,
+  focus_keyword: props.homeFocusKeyword,
+  meta_robots: props.homeMetaRobots || 'index,follow',
+  canonical_url: props.homeCanonicalUrl,
   frontend_head_snippet: props.homeFrontendHeadSnippet,
+});
+
+const ogForm = useForm({
+  locale: props.contentLocale,
+  og_title: props.homeOgTitle,
+  og_description: props.homeOgDescription,
+  og_image: props.homeOgImage,
 });
 
 watch(() => props.contentLocale, (val) => {
   const l = val || 'id';
-  form.locale = l;
-  seoForm.locale = l;
+  contentForm.locale = l;
+  metaForm.locale = l;
+  ogForm.locale = l;
 });
 watch(() => props.homePageContent, (val) => {
-  form.home_page_content = val ?? '';
+  contentForm.home_page_content = val ?? '';
 });
-watch(() => props.homeMetaTitle, (val) => { seoForm.meta_title = val ?? ''; });
-watch(() => props.homeMetaDescription, (val) => { seoForm.meta_description = val ?? ''; });
-watch(() => props.homeMetaKeywords, (val) => { seoForm.meta_keywords = val ?? ''; });
-watch(() => props.homeFocusKeyword, (val) => { seoForm.focus_keyword = val ?? ''; });
-watch(() => props.homeOgTitle, (val) => { seoForm.og_title = val ?? ''; });
-watch(() => props.homeOgDescription, (val) => { seoForm.og_description = val ?? ''; });
-watch(() => props.homeOgImage, (val) => { seoForm.og_image = val ?? ''; });
-watch(() => props.homeMetaRobots, (val) => { seoForm.meta_robots = val ?? 'index,follow'; });
-watch(() => props.homeCanonicalUrl, (val) => { seoForm.canonical_url = val ?? ''; });
-watch(() => props.homeFrontendHeadSnippet, (val) => { seoForm.frontend_head_snippet = val ?? ''; });
+watch(() => props.homeMetaTitle, (val) => { metaForm.meta_title = val ?? ''; });
+watch(() => props.homeMetaDescription, (val) => { metaForm.meta_description = val ?? ''; });
+watch(() => props.homeMetaKeywords, (val) => { metaForm.meta_keywords = val ?? ''; });
+watch(() => props.homeFocusKeyword, (val) => { metaForm.focus_keyword = val ?? ''; });
+watch(() => props.homeOgTitle, (val) => { ogForm.og_title = val ?? ''; });
+watch(() => props.homeOgDescription, (val) => { ogForm.og_description = val ?? ''; });
+watch(() => props.homeOgImage, (val) => { ogForm.og_image = val ?? ''; });
+watch(() => props.homeMetaRobots, (val) => { metaForm.meta_robots = val ?? 'index,follow'; });
+watch(() => props.homeCanonicalUrl, (val) => { metaForm.canonical_url = val ?? ''; });
+watch(() => props.homeFrontendHeadSnippet, (val) => { metaForm.frontend_head_snippet = val ?? ''; });
 
-function submit() {
-  form.clearErrors();
-  form.locale = props.contentLocale;
-  form.put(route('content-manager.update'), { preserveScroll: true });
+function submitContent() {
+  contentForm.clearErrors();
+  contentForm.locale = props.contentLocale;
+  contentForm.put(route(homeSeoRoute), { preserveScroll: true });
 }
-function submitSeo() {
-  seoForm.clearErrors();
-  seoForm.locale = props.contentLocale;
-  seoForm.put(route('content-manager.home-seo.update'), { preserveScroll: true });
+
+function submitMeta() {
+  metaForm.clearErrors();
+  metaForm.locale = props.contentLocale;
+  metaForm.put(route(homeSeoRoute), { preserveScroll: true });
+}
+
+function submitOg() {
+  ogForm.clearErrors();
+  ogForm.locale = props.contentLocale;
+  ogForm.put(route(homeSeoRoute), { preserveScroll: true });
 }
 
 function switchContentLocale(loc) {
@@ -108,84 +122,98 @@ function switchContentLocale(loc) {
         </p>
       </div>
 
+      <!-- Meta tags -->
       <div class="admin-box admin-box-smooth mb-4">
-        <label class="form-label small fw-semibold">Home page content</label>
-        <HomePageEditor v-model="form.home_page_content" />
-        <InputError :message="form.errors.home_page_content" class="mt-2" />
-        <div class="mt-3">
-          <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="form.processing" @click="submit">
-            Save home page
-          </PrimaryButton>
-        </div>
-      </div>
-
-      <div class="admin-box admin-box-smooth mb-4">
-        <h2 class="h6 mb-3">Meta tags &amp; SEO (home page only)</h2>
-        <p class="text-muted small mb-3">These meta tags and Open Graph fields are used only for the frontend home page (landing). Leave blank to use defaults.</p>
+        <h2 class="h6 mb-1">Meta tags</h2>
+        <p class="text-muted small mb-3">
+          Title, description, keywords, and indexing hints for the frontend home page. Submitting only updates these fields.
+        </p>
         <div class="mb-2">
           <label class="form-label small fw-semibold">Meta title</label>
-          <input v-model="seoForm.meta_title" type="text" class="form-control form-control-sm" placeholder="e.g. Compress PDF – Free Online PDF Compressor" maxlength="255" />
-          <InputError :message="seoForm.errors.meta_title" />
+          <input v-model="metaForm.meta_title" type="text" class="form-control form-control-sm" placeholder="e.g. Compress PDF – Free Online PDF Compressor" maxlength="255" />
+          <InputError :message="metaForm.errors.meta_title" />
         </div>
         <div class="mb-2">
           <label class="form-label small fw-semibold">Meta description</label>
-          <textarea v-model="seoForm.meta_description" class="form-control form-control-sm" rows="2" placeholder="Short description for search results" maxlength="500"></textarea>
-          <InputError :message="seoForm.errors.meta_description" />
+          <textarea v-model="metaForm.meta_description" class="form-control form-control-sm" rows="2" placeholder="Short description for search results" maxlength="500"></textarea>
+          <InputError :message="metaForm.errors.meta_description" />
         </div>
         <div class="mb-2">
           <label class="form-label small fw-semibold">Meta keywords</label>
-          <input v-model="seoForm.meta_keywords" type="text" class="form-control form-control-sm" placeholder="keyword1, keyword2, keyword3" maxlength="255" />
-          <InputError :message="seoForm.errors.meta_keywords" />
+          <input v-model="metaForm.meta_keywords" type="text" class="form-control form-control-sm" placeholder="keyword1, keyword2, keyword3" maxlength="2000" />
+          <InputError :message="metaForm.errors.meta_keywords" />
         </div>
         <div class="mb-2">
           <label class="form-label small fw-semibold">Focus keyword</label>
-          <input v-model="seoForm.focus_keyword" type="text" class="form-control form-control-sm" placeholder="Primary keyword for this page" maxlength="255" />
-          <InputError :message="seoForm.errors.focus_keyword" />
-        </div>
-        <div class="mb-2">
-          <label class="form-label small fw-semibold">Open Graph title</label>
-          <input v-model="seoForm.og_title" type="text" class="form-control form-control-sm" placeholder="Defaults to meta title" maxlength="255" />
-          <InputError :message="seoForm.errors.og_title" />
-        </div>
-        <div class="mb-2">
-          <label class="form-label small fw-semibold">Open Graph description</label>
-          <textarea v-model="seoForm.og_description" class="form-control form-control-sm" rows="2" placeholder="Defaults to meta description" maxlength="500"></textarea>
-          <InputError :message="seoForm.errors.og_description" />
-        </div>
-        <div class="mb-2">
-          <label class="form-label small fw-semibold">Open Graph image URL</label>
-          <input v-model="seoForm.og_image" type="url" class="form-control form-control-sm" placeholder="https://… (optional)" />
-          <InputError :message="seoForm.errors.og_image" />
+          <input v-model="metaForm.focus_keyword" type="text" class="form-control form-control-sm" placeholder="Primary keyword for this page" maxlength="255" />
+          <InputError :message="metaForm.errors.focus_keyword" />
         </div>
         <div class="mb-2">
           <label class="form-label small fw-semibold">Robots directive</label>
-          <select v-model="seoForm.meta_robots" class="form-select form-select-sm" style="max-width: 22rem;">
+          <select v-model="metaForm.meta_robots" class="form-select form-select-sm" style="max-width: 22rem;">
             <option value="index,follow">index, follow (default)</option>
             <option value="index,nofollow">index, nofollow</option>
             <option value="noindex,follow">noindex, follow</option>
             <option value="noindex,nofollow">noindex, nofollow</option>
           </select>
-          <InputError :message="seoForm.errors.meta_robots" />
+          <InputError :message="metaForm.errors.meta_robots" />
         </div>
-        <div class="mb-3">
+        <div class="mb-2">
           <label class="form-label small fw-semibold">Canonical URL</label>
-          <input v-model="seoForm.canonical_url" type="text" class="form-control form-control-sm" placeholder="https://compresspdf.id/ (leave blank to auto-set)" maxlength="500" />
-          <InputError :message="seoForm.errors.canonical_url" />
+          <input v-model="metaForm.canonical_url" type="text" class="form-control form-control-sm" placeholder="https://compresspdf.id/ (leave blank to auto-set)" maxlength="500" />
+          <InputError :message="metaForm.errors.canonical_url" />
         </div>
         <div class="mb-3">
           <label class="form-label small fw-semibold">Frontend <code>&lt;head&gt;</code> snippet (GSC, gtag, GTM)</label>
           <textarea
-            v-model="seoForm.frontend_head_snippet"
+            v-model="metaForm.frontend_head_snippet"
             class="form-control form-control-sm font-monospace"
             rows="6"
             spellcheck="false"
             placeholder="Paste verification meta or analytics scripts for the public site"
           ></textarea>
           <div class="form-text small text-muted">Same field as SEO → Analytics → Public site head HTML, and SEO → Home Page SEO.</div>
-          <InputError :message="seoForm.errors.frontend_head_snippet" />
+          <InputError :message="metaForm.errors.frontend_head_snippet" />
         </div>
-        <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="seoForm.processing" @click="submitSeo">
-          Save meta tags &amp; SEO
+        <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="metaForm.processing" @click="submitMeta">
+          {{ metaForm.processing ? 'Saving…' : 'Save meta tags' }}
+        </PrimaryButton>
+      </div>
+
+      <!-- Home page content -->
+      <div class="admin-box admin-box-smooth mb-4">
+        <h2 class="h6 mb-1">Home page content</h2>
+        <p class="text-muted small mb-3">Main body HTML shown below the compressor on the landing page.</p>
+        <HomePageEditor v-model="contentForm.home_page_content" />
+        <InputError :message="contentForm.errors.home_page_content" class="mt-2" />
+        <div class="mt-3">
+          <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="contentForm.processing" @click="submitContent">
+            {{ contentForm.processing ? 'Saving…' : 'Save home page content' }}
+          </PrimaryButton>
+        </div>
+      </div>
+
+      <!-- Open Graph -->
+      <div class="admin-box admin-box-smooth mb-4">
+        <h2 class="h6 mb-1">Open Graph (social preview)</h2>
+        <p class="text-muted small mb-3">Title, description, and image when the home page is shared. Paste a URL from <strong>Media library</strong> if you uploaded there.</p>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Open Graph title</label>
+          <input v-model="ogForm.og_title" type="text" class="form-control form-control-sm" placeholder="Defaults to meta title if left blank" maxlength="255" />
+          <InputError :message="ogForm.errors.og_title" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Open Graph description</label>
+          <textarea v-model="ogForm.og_description" class="form-control form-control-sm" rows="2" placeholder="Defaults to meta description" maxlength="500"></textarea>
+          <InputError :message="ogForm.errors.og_description" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Open Graph image URL</label>
+          <input v-model="ogForm.og_image" type="url" class="form-control form-control-sm" placeholder="https://… (optional)" />
+          <InputError :message="ogForm.errors.og_image" />
+        </div>
+        <PrimaryButton type="button" class="btn btn-primary btn-sm" :disabled="ogForm.processing" @click="submitOg">
+          {{ ogForm.processing ? 'Saving…' : 'Save Open Graph' }}
         </PrimaryButton>
       </div>
 

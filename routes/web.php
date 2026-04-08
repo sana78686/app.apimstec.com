@@ -24,6 +24,7 @@ use App\Http\Controllers\DomainController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\CmsLocaleController;
+use App\Http\Controllers\FrontendMediaController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
@@ -153,9 +154,8 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
             Route::delete('/cards/{card}', [CardsSectionController::class, 'destroy'])->name('cards.destroy')->middleware('permission:content.delete');
         });
 
-        Route::get('/media', function () {
-            return Inertia::render('Media/Index');
-        })->name('media.index');
+        Route::get('/media', [FrontendMediaController::class, 'index'])->name('media.index');
+        Route::post('/media', [FrontendMediaController::class, 'store'])->name('media.store');
 
         Route::prefix('seo')->name('seo.')->group(function () {
             Route::get('/home-page', [HomePageSeoController::class, 'index'])->name('home-page');

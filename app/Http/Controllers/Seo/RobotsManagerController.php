@@ -29,7 +29,7 @@ class RobotsManagerController extends Controller
             $pub = $domain instanceof Domain ? $domain->publicSiteBaseUrl() : '';
             $content = RobotsTxt::defaultContent($pub !== '' ? $pub : null);
         } else {
-            $content = trim($content);
+            $content = RobotsTxt::stripUnsupportedRobotsLines(trim($content));
         }
 
         $cmsHost = rtrim((string) config('app.url'), '/');

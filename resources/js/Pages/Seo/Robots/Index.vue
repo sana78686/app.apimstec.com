@@ -73,6 +73,9 @@ function openRobots() {
         <p class="text-muted small mb-3">
           Use <strong>User-agent: *</strong> for all bots. <strong>Allow: /</strong> to allow a path; <strong>Disallow: /path</strong> to block it. Add <strong>Sitemap: {{ sitemapUrl }}</strong> (it will be added automatically if you leave it out). One directive per line; blank lines separate groups.
         </p>
+        <p class="text-muted small border-start border-3 border-warning ps-2 mb-3">
+          Do not use <code class="admin-list-code">Content-Signal:</code> in robots.txt — Googlebot ignores it and Google Search Console reports “Rule ignored”. That line is removed automatically when you save.
+        </p>
         <div class="mb-3">
           <textarea
             v-model="form.content"

@@ -103,40 +103,69 @@ class ContentManagerController extends Controller
         ]);
     }
 
-    /** Update home page meta tags & SEO only (used by Content Manager and SEO > Home Page). */
+    /**
+     * Update home page SEO / body. Each CMS form sends only its fields; only present keys are persisted
+     * so separate submits (meta, Open Graph, home HTML) do not wipe other groups.
+     */
     public function homeSeoUpdate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'locale' => ['required', 'string', Rule::in(ContentLocales::SUPPORTED)],
-            'meta_title'       => 'nullable|string|max:255',
-            'meta_description' => 'nullable|string|max:500',
-            'meta_keywords'    => 'nullable|string|max:2000',
-            'focus_keyword'    => 'nullable|string|max:255',
-            'og_title'         => 'nullable|string|max:255',
-            'og_description'   => 'nullable|string|max:500',
-            'og_image'         => 'nullable|string|max:2048',
-            'meta_robots'      => ['nullable', 'string', Rule::in([
+            'meta_title'       => ['sometimes', 'nullable', 'string', 'max:255'],
+            'meta_description' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'meta_keywords'    => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'focus_keyword'    => ['sometimes', 'nullable', 'string', 'max:255'],
+            'og_title'         => ['sometimes', 'nullable', 'string', 'max:255'],
+            'og_description'   => ['sometimes', 'nullable', 'string', 'max:500'],
+            'og_image'         => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'meta_robots'      => ['sometimes', 'nullable', 'string', Rule::in([
                 'index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow',
             ])],
-            'canonical_url'    => 'nullable|string|max:500',
-            'frontend_head_snippet' => 'nullable|string|max:65535',
+            'canonical_url'    => ['sometimes', 'nullable', 'string', 'max:500'],
+            'frontend_head_snippet' => ['sometimes', 'nullable', 'string', 'max:65535'],
+            'home_page_content' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $loc = ContentLocales::normalize($validated['locale']);
-        self::setLocalized(self::KEY_HOME_META_TITLE, $loc, $validated['meta_title'] ?? '');
-        self::setLocalized(self::KEY_HOME_META_DESCRIPTION, $loc, $validated['meta_description'] ?? '');
-        self::setLocalized(self::KEY_HOME_META_KEYWORDS, $loc, $validated['meta_keywords'] ?? '');
-        self::setLocalized(self::KEY_HOME_FOCUS_KEYWORD, $loc, $validated['focus_keyword'] ?? '');
-        self::setLocalized(self::KEY_HOME_OG_TITLE, $loc, $validated['og_title'] ?? '');
-        self::setLocalized(self::KEY_HOME_OG_DESCRIPTION, $loc, $validated['og_description'] ?? '');
-        self::setLocalized(self::KEY_HOME_OG_IMAGE, $loc, $validated['og_image'] ?? '');
-        self::setLocalized(self::KEY_HOME_META_ROBOTS, $loc, $validated['meta_robots'] ?? 'index,follow');
-        self::setLocalized(self::KEY_HOME_CANONICAL_URL, $loc, $validated['canonical_url'] ?? '');
-        self::setLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc, $validated['frontend_head_snippet'] ?? '');
+
+        if (array_key_exists('meta_title', $validated)) {
+            self::setLocalized(self::KEY_HOME_META_TITLE, $loc, (string) ($validated['meta_title'] ?? ''));
+        }
+        if (array_key_exists('meta_description', $validated)) {
+            self::setLocalized(self::KEY_HOME_META_DESCRIPTION, $loc, (string) ($validated['meta_description'] ?? ''));
+        }
+        if (array_key_exists('meta_keywords', $validated)) {
+            self::setLocalized(self::KEY_HOME_META_KEYWORDS, $loc, (string) ($validated['meta_keywords'] ?? ''));
+        }
+        if (array_key_exists('focus_keyword', $validated)) {
+            self::setLocalized(self::KEY_HOME_FOCUS_KEYWORD, $loc, (string) ($validated['focus_keyword'] ?? ''));
+        }
+        if (array_key_exists('og_title', $validated)) {
+            self::setLocalized(self::KEY_HOME_OG_TITLE, $loc, (string) ($validated['og_title'] ?? ''));
+        }
+        if (array_key_exists('og_description', $validated)) {
+            self::setLocalized(self::KEY_HOME_OG_DESCRIPTION, $loc, (string) ($validated['og_description'] ?? ''));
+        }
+        if (array_key_exists('og_image', $validated)) {
+            self::setLocalized(self::KEY_HOME_OG_IMAGE, $loc, (string) ($validated['og_image'] ?? ''));
+        }
+        if (array_key_exists('meta_robots', $validated)) {
+            $robots = (string) ($validated['meta_robots'] ?? '');
+            self::setLocalized(self::KEY_HOME_META_ROBOTS, $loc, $robots !== '' ? $robots : 'index,follow');
+        }
+        if (array_key_exists('canonical_url', $validated)) {
+            self::setLocalized(self::KEY_HOME_CANONICAL_URL, $loc, (string) ($validated['canonical_url'] ?? ''));
+        }
+        if (array_key_exists('frontend_head_snippet', $validated)) {
+            self::setLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc, (string) ($validated['frontend_head_snippet'] ?? ''));
+        }
+        if (array_key_exists('home_page_content', $validated)) {
+            ContentManagerSetting::set(self::homePageContentKey($loc), (string) ($validated['home_page_content'] ?? ''));
+        }
 
         self::bumpPublicApiCacheGeneration();
 
-        return back()->with('success', 'Home page meta tags & SEO saved.');
+        return back()->with('success', 'Saved.');
     }
 
     /** Home page with URL-driven tabs: content-manager/home/faq and content-manager/home/use-cards */

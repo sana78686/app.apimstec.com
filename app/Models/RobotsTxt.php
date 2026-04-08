@@ -29,10 +29,30 @@ class RobotsTxt extends Model
         $record = self::getRecord();
         $content = $record?->content;
         if ($content !== null && trim($content) !== '') {
-            return self::ensureSitemapInContent(trim($content), $base);
+            $content = self::stripUnsupportedRobotsLines(trim($content));
+
+            return self::ensureSitemapInContent($content, $base);
         }
 
         return self::defaultContent($base);
+    }
+
+    /**
+     * Remove directives that major crawlers (e.g. Googlebot) do not support, which trigger
+     * Search Console “Rule ignored” warnings — e.g. experimental Content-Signal lines.
+     */
+    public static function stripUnsupportedRobotsLines(string $content): string
+    {
+        $lines = preg_split("/\r\n|\n|\r/", $content) ?: [];
+        $kept = [];
+        foreach ($lines as $line) {
+            if (preg_match('/^\s*Content-Signal\s*:/i', $line)) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+
+        return rtrim(implode("\n", $kept));
     }
 
     /** Default robots.txt: allow all, include sitemap link on the public site. */
@@ -68,6 +88,7 @@ class RobotsTxt extends Model
     /** Update the stored content (upsert the single row). */
     public static function setContent(string $content): void
     {
+        $content = self::stripUnsupportedRobotsLines($content);
         $record = self::getRecord();
         if ($record) {
             $record->update(['content' => $content]);
