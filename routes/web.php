@@ -155,7 +155,19 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
         });
 
         Route::get('/media', [FrontendMediaController::class, 'index'])->name('media.index');
+        Route::get('/media/preview/{filename}', [FrontendMediaController::class, 'preview'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.preview');
         Route::post('/media', [FrontendMediaController::class, 'store'])->name('media.store');
+        Route::put('/media/{filename}', [FrontendMediaController::class, 'update'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.update');
+        Route::patch('/media/{filename}', [FrontendMediaController::class, 'rename'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.rename');
+        Route::delete('/media/{filename}', [FrontendMediaController::class, 'destroy'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.destroy');
 
         Route::prefix('seo')->name('seo.')->group(function () {
             Route::get('/home-page', [HomePageSeoController::class, 'index'])->name('home-page');

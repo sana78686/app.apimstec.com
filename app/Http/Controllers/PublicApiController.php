@@ -14,6 +14,7 @@ use App\Models\Page;
 use Carbon\Carbon;
 use App\Support\ContentLocales;
 use App\Support\FrontendAssetUrl;
+use App\Support\PublicJsonLdBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -251,21 +252,32 @@ class PublicApiController extends Controller
             return response()->json(['message' => 'Page not found.'], 404);
         }
 
+        $domain = $this->activeDomainModel();
+        $og = $this->rewriteAssetForPublic($page->og_image);
+        $canon = $this->rewriteCanonicalForPublic($page->canonical_url);
+        $jsonLd = $domain instanceof Domain
+            ? PublicJsonLdBuilder::pageGraph($domain, $locale, $page, [
+                'canonical_url' => $canon,
+                'og_image' => $og,
+            ])
+            : null;
+
         return response()->json([
             'id' => $page->id,
             'title' => $page->title,
             'slug' => $page->slug,
             'content' => $page->content,
-            'meta_title' => $page->meta_title ?? $page->title,
+            'meta_title' => $page->meta_title,
             'meta_description' => $page->meta_description,
-            'canonical_url' => $this->rewriteCanonicalForPublic($page->canonical_url),
+            'canonical_url' => $canon,
             'meta_robots' => $page->meta_robots ?? $page->metaRobotsForVisibility(),
-            'og_title' => $page->og_title ?? $page->meta_title ?? $page->title,
-            'og_description' => $page->og_description ?? $page->meta_description,
-            'og_image' => $this->rewriteAssetForPublic($page->og_image),
+            'og_title' => $page->og_title,
+            'og_description' => $page->og_description,
+            'og_image' => $og,
             'schema_type' => $page->schema_type,
             'schema_data' => $page->schema_data,
             'alternate_locales' => $this->alternateLocalesForPageSlug($slug),
+            'json_ld' => $jsonLd,
         ]);
     }
 
@@ -328,6 +340,16 @@ class PublicApiController extends Controller
 
         $blog->loadMissing('author:id,name');
 
+        $domain = $this->activeDomainModel();
+        $og = $this->rewriteAssetForPublic($blog->og_image);
+        $canon = $this->rewriteCanonicalForPublic($blog->canonical_url);
+        $jsonLd = $domain instanceof Domain
+            ? PublicJsonLdBuilder::blogGraph($domain, $locale, $blog, [
+                'canonical_url' => $canon,
+                'og_image' => $og,
+            ])
+            : null;
+
         return response()->json([
             'id' => $blog->id,
             'title' => $blog->title,
@@ -337,17 +359,18 @@ class PublicApiController extends Controller
             'published_at' => $blog->published_at?->toIso8601String(),
             'updated_at' => $blog->updated_at?->toIso8601String(),
             'author' => $blog->author ? ['id' => $blog->author->id, 'name' => $blog->author->name] : null,
-            'meta_title' => $blog->meta_title ?? $blog->og_title ?? $blog->title,
-            'meta_description' => $blog->meta_description ?? $blog->og_description ?? $blog->excerpt,
-            'canonical_url' => $this->rewriteCanonicalForPublic($blog->canonical_url),
+            'meta_title' => $blog->meta_title,
+            'meta_description' => $blog->meta_description,
+            'canonical_url' => $canon,
             'meta_robots' => $blog->meta_robots ?? $blog->metaRobotsForVisibility(),
-            'og_title' => $blog->og_title ?? $blog->meta_title ?? $blog->title,
-            'og_description' => $blog->og_description ?? $blog->meta_description ?? $blog->excerpt,
-            'og_image' => $this->rewriteAssetForPublic($blog->og_image),
-            'image' => $this->rewriteAssetForPublic($blog->og_image),
+            'og_title' => $blog->og_title,
+            'og_description' => $blog->og_description,
+            'og_image' => $og,
+            'image' => $og,
             'schema_type' => $blog->schema_type,
             'schema_data' => $blog->schema_data,
             'alternate_locales' => $this->alternateLocalesForBlogSlug($slug),
+            'json_ld' => $jsonLd,
         ]);
     }
 
@@ -413,7 +436,7 @@ class PublicApiController extends Controller
         $ogHome = ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_IMAGE, $loc);
         $canonHome = ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_CANONICAL_URL, $loc);
 
-        return response()->json([
+        $homeRow = [
             'content'          => ContentManagerSetting::get($contentKey, ''),
             'meta_title'       => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_TITLE, $loc),
             'meta_description' => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_META_DESCRIPTION, $loc),
@@ -426,6 +449,30 @@ class PublicApiController extends Controller
             'canonical_url'    => $this->rewriteCanonicalForPublic($canonHome),
             'head_snippet'     => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc),
             'ga_measurement_id' => (string) AnalyticsSetting::getValue('ga_measurement_id', ''),
+        ];
+
+        $domain = $this->activeDomainModel();
+        $homeRow['json_ld'] = $domain instanceof Domain
+            ? PublicJsonLdBuilder::homeGraph($domain, $loc, $homeRow)
+            : null;
+
+        return response()->json($homeRow);
+    }
+
+    /**
+     * JSON-LD for the PDF compressor tool route (WebApplication + FAQ + breadcrumb). Tenant + locale aware.
+     */
+    public function schemaTool(Request $request): JsonResponse
+    {
+        $locale = $this->publicLocale($request);
+        $domain = $this->activeDomainModel();
+        if (! $domain instanceof Domain) {
+            return response()->json(['json_ld' => null]);
+        }
+        $items = FaqItem::where('locale', $locale)->ordered()->get(['question', 'answer']);
+
+        return response()->json([
+            'json_ld' => PublicJsonLdBuilder::toolCompressGraph($domain, $locale, $items),
         ]);
     }
 

@@ -95,7 +95,10 @@ function schemaLabel(value) {
 
       <div class="admin-box admin-box-smooth">
         <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Structured data by content</h2>
-        <p class="text-muted small mb-3">Set the schema type for each page or blog post. Your frontend can output this as JSON-LD in the page head for rich results (e.g. FAQ snippets, article cards, breadcrumb trail).</p>
+          <p class="text-muted small mb-3">
+            The public React site now receives ready-made <strong>JSON-LD</strong> from the API (no extra work per domain). Pick a type here; URLs and your domain’s <strong>frontend URL</strong> in CMS → Domains are filled in automatically.
+            For <strong>FAQ</strong> on a page, add JSON in <code class="admin-list-code">schema_data</code> (API/DB): <code class="admin-list-code">faq_questions</code> as an array of <code class="admin-list-code">{ &quot;question&quot;, &quot;answer&quot; }</code> (must match visible text). For <strong>Article + FAQ</strong> on a blog, choose <strong>Article</strong> and put the same <code class="admin-list-code">faq_questions</code> array in <code class="admin-list-code">schema_data</code>.
+          </p>
         <div class="admin-list-table-wrap">
           <table class="admin-list-table" role="grid">
             <thead>

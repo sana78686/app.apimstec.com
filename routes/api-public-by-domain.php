@@ -24,5 +24,6 @@ Route::post('contact/send', [PublicApiController::class, 'sendContact'])->name('
 Route::get('faq', [PublicApiController::class, 'faq'])->name('api.public.faq');
 Route::get('home-cards', [PublicApiController::class, 'homeCards'])->name('api.public.home-cards');
 Route::get('home-content', [PublicApiController::class, 'homeContent'])->name('api.public.home-content');
+Route::get('schema/tool', [PublicApiController::class, 'schemaTool'])->name('api.public.schema-tool');
 Route::get('legal-nav', [PublicApiController::class, 'legalNav'])->name('api.public.legal-nav');
 Route::get('legal/{slug}', [PublicApiController::class, 'legalPage'])->name('api.public.legal')->where('slug', 'terms|privacy-policy|disclaimer|about-us|cookie-policy');
