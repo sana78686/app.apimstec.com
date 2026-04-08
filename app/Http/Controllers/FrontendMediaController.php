@@ -7,7 +7,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,7 +70,7 @@ class FrontendMediaController extends Controller
                 'required',
                 'file',
                 'max:5120',
-                Rule::extensions(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif']),
+                'mimes:jpg,jpeg,png,gif,webp,svg,avif',
             ],
         ]);
 
