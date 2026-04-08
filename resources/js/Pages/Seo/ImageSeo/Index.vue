@@ -108,7 +108,7 @@ function sourceLabel(item) {
         <div>
           <h1 class="admin-list-page-title">Image SEO Manager</h1>
           <p class="admin-list-page-desc">
-            <strong>Compress images</strong>, <strong>convert to WebP</strong>, and add <strong>ALT text</strong> to improve SEO and loading speed. Use "Discover" to import images from your pages and blog OG images.
+            <strong>Compress images</strong>, <strong>convert to WebP</strong>, and add <strong>ALT text</strong> for SEO. Use &quot;Discover&quot; to import images from page/blog HTML (rich text), home &amp; legal content, FAQ, OG images, the tenant <code>cms-uploads</code> folder, and editor uploads.
           </p>
         </div>
       </div>
@@ -127,7 +127,9 @@ function sourceLabel(item) {
 
       <div class="admin-box admin-box-smooth">
         <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Images</h2>
-        <p class="text-muted small mb-3">Edit ALT text for accessibility and SEO. For local images you can compress and create WebP versions to improve loading speed.</p>
+        <p class="text-muted small mb-3">
+          Edit ALT text for accessibility and SEO. Local paths (<code>/storage/…</code>, <code>/cms-uploads/…</code>) can be compressed or converted to WebP. External URLs are listed for reference only.
+        </p>
         <div class="admin-list-table-wrap">
           <table class="admin-list-table" role="grid">
             <thead>
@@ -212,7 +214,7 @@ function sourceLabel(item) {
             </tbody>
           </table>
           <p v-if="!media.length" class="admin-text-muted p-3 mb-0">
-            No images yet. Click "Discover images from site" to import OG images from pages and blogs, or add images via the Media library and link them in content.
+            No images yet. Click &quot;Discover images from site&quot; to scan pages, blogs, home/legal/FAQ HTML, OG images, Media library uploads, and the tenant <code>cms-uploads</code> folder.
           </p>
         </div>
       </div>

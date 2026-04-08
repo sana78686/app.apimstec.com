@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Domain;
+use App\Support\FrontendPublicPath;
+use App\Support\ImageToolkit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -18,13 +20,7 @@ class FrontendMediaController extends Controller
 
     private function publicRoot(): string
     {
-        $path = (string) env('FRONTEND_PUBLIC_PATH', '');
-        $path = $path !== '' ? $path : (string) realpath(base_path('../public'));
-        if ($path !== '' && is_dir($path)) {
-            return rtrim($path, DIRECTORY_SEPARATOR);
-        }
-
-        return rtrim(public_path(), DIRECTORY_SEPARATOR);
+        return FrontendPublicPath::root();
     }
 
     /** Stable folder/file prefix from tenant domain (e.g. compresspdf.id → compresspdf-id). */
@@ -117,11 +113,19 @@ class FrontendMediaController extends Controller
             ->filter(fn (\SplFileInfo $f) => (bool) preg_match('/\.(jpe?g|png|gif|webp|svg|avif)$/i', $f->getFilename()))
             ->sortByDesc(fn (\SplFileInfo $f) => $f->getMTime())
             ->values()
-            ->map(fn (\SplFileInfo $f) => [
-                'name' => $f->getFilename(),
-                'path' => $this->publicPathForFile($domain, $f->getFilename()),
-                'updated' => $f->getMTime(),
-            ])
+            ->map(function (\SplFileInfo $f) use ($domain) {
+                $name = $f->getFilename();
+                $base = pathinfo($name, PATHINFO_FILENAME);
+                $webpSibling = $f->getPath().DIRECTORY_SEPARATOR.$base.'.webp';
+
+                return [
+                    'name' => $name,
+                    'path' => $this->publicPathForFile($domain, $name),
+                    'updated' => $f->getMTime(),
+                    'size' => $f->getSize(),
+                    'has_webp' => is_file($webpSibling),
+                ];
+            })
             ->all();
 
         $baseUrl = $domain->publicSiteBaseUrl();
@@ -291,5 +295,64 @@ class FrontendMediaController extends Controller
         File::delete($this->fullPath($domain, $filename));
 
         return back()->with('success', 'Image deleted.');
+    }
+
+    /**
+     * Lossy recompress raster image in place (JPEG/PNG/GIF). SVG/AVIF skipped.
+     */
+    public function compress(Request $request, string $filename): RedirectResponse
+    {
+        $domain = $this->resolveDomain($request);
+        if (! $domain instanceof Domain) {
+            return back()->with('error', 'Choose a website first.');
+        }
+
+        $filename = basename($filename);
+        if (! preg_match('/\.(jpe?g|png|gif)$/i', $filename)) {
+            return back()->with('error', 'Compression supports JPEG, PNG, or GIF only.');
+        }
+
+        if (! $this->fileExistsInTenant($domain, $filename)) {
+            return back()->with('error', 'File not found.');
+        }
+
+        $path = $this->fullPath($domain, $filename);
+        if (! ImageToolkit::compress($path)) {
+            return back()->with('error', 'Compression failed (unsupported or corrupt file).');
+        }
+
+        return back()->with('success', 'Image compressed: '.$filename);
+    }
+
+    /**
+     * Write a .webp sibling next to the original (same folder).
+     */
+    public function toWebP(Request $request, string $filename): RedirectResponse
+    {
+        $domain = $this->resolveDomain($request);
+        if (! $domain instanceof Domain) {
+            return back()->with('error', 'Choose a website first.');
+        }
+
+        $filename = basename($filename);
+        if (preg_match('/\.webp$/i', $filename)) {
+            return back()->with('error', 'File is already WebP.');
+        }
+
+        if (! preg_match('/\.(jpe?g|png|gif|webp)$/i', $filename)) {
+            return back()->with('error', 'WebP conversion supports JPEG, PNG, GIF, or WebP source.');
+        }
+
+        if (! $this->fileExistsInTenant($domain, $filename)) {
+            return back()->with('error', 'File not found.');
+        }
+
+        $path = $this->fullPath($domain, $filename);
+        $webp = ImageToolkit::convertToWebP($path);
+        if ($webp === null) {
+            return back()->with('error', 'WebP conversion failed (GD / imagewebp missing or unsupported format).');
+        }
+
+        return back()->with('success', 'WebP created: '.basename($webp));
     }
 }

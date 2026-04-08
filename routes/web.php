@@ -168,6 +168,12 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
         Route::delete('/media/{filename}', [FrontendMediaController::class, 'destroy'])
             ->where('filename', '[A-Za-z0-9._-]+')
             ->name('media.destroy');
+        Route::post('/media/{filename}/compress', [FrontendMediaController::class, 'compress'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.compress');
+        Route::post('/media/{filename}/webp', [FrontendMediaController::class, 'toWebP'])
+            ->where('filename', '[A-Za-z0-9._-]+')
+            ->name('media.webp');
 
         Route::prefix('seo')->name('seo.')->group(function () {
             Route::get('/home-page', [HomePageSeoController::class, 'index'])->name('home-page');

@@ -86,6 +86,10 @@ final class FrontendAssetUrl
             return $base.self::encodePath(substr($v, 1));
         }
 
+        if ($base !== '' && preg_match('#^/cms-uploads/.+#i', $v)) {
+            return $base.$v;
+        }
+
         return $value;
     }
 

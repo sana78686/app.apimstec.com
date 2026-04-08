@@ -2,15 +2,23 @@
 
 namespace App\Http\Controllers\Seo;
 
+use App\Http\Controllers\ContentManagerController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\FrontendMediaController;
 use App\Models\Blog;
+use App\Models\ContentManagerSetting;
+use App\Models\Domain;
+use App\Models\FaqItem;
 use App\Models\Media;
 use App\Models\MediaSource;
 use App\Models\Page;
+use App\Support\ContentLocales;
+use App\Support\FrontendPublicPath;
+use App\Support\ImageToolkit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
-use Inertia\Inertia;
 use Inertia\Response;
 
 class ImageSeoController extends Controller
@@ -28,6 +36,7 @@ class ImageSeoController extends Controller
             $url = $m->isLocal() && $baseUrl
                 ? $baseUrl.'/'.ltrim($path, '/')
                 : $m->path;
+
             return [
                 'id' => $m->id,
                 'path' => $m->path,
@@ -53,30 +62,95 @@ class ImageSeoController extends Controller
     }
 
     /**
-     * Discover images from pages and blogs (og_image) and add to media.
+     * Discover images from CMS content (pages, blogs, home, legal, FAQ), OG fields, editor uploads, and tenant cms-uploads folder.
      */
     public function discover(): JsonResponse
     {
-        $paths = collect();
+        $domainId = session('active_domain_id');
+        $domain = $domainId ? Domain::find($domainId) : null;
 
-        foreach (Page::whereNotNull('og_image')->where('og_image', '!=', '')->get(['id', 'og_image']) as $p) {
-            $paths->push(['path' => $p->og_image, 'source_type' => 'page', 'source_id' => $p->id]);
+        $items = [];
+
+        foreach (Page::query()->get(['id', 'og_image', 'content']) as $p) {
+            $this->pushPath($items, $p->og_image, 'page', (int) $p->id, 'og_image', $domain);
+            foreach ($this->extractImageUrlsFromHtml($p->content) as $u) {
+                $this->pushPath($items, $u, 'page', (int) $p->id, 'html', $domain);
+            }
         }
-        foreach (Blog::whereNotNull('og_image')->where('og_image', '!=', '')->get(['id', 'og_image']) as $b) {
-            $paths->push(['path' => $b->og_image, 'source_type' => 'blog', 'source_id' => $b->id]);
+
+        foreach (Blog::query()->get(['id', 'og_image', 'content']) as $b) {
+            $this->pushPath($items, $b->og_image, 'blog', (int) $b->id, 'og_image', $domain);
+            foreach ($this->extractImageUrlsFromHtml($b->content) as $u) {
+                $this->pushPath($items, $u, 'blog', (int) $b->id, 'html', $domain);
+            }
+        }
+
+        foreach (ContentLocales::SUPPORTED as $loc) {
+            $homeHtml = ContentManagerSetting::get(ContentManagerController::homePageContentKey($loc), '');
+            foreach ($this->extractImageUrlsFromHtml($homeHtml) as $u) {
+                $this->pushPath($items, $u, 'home_page', 0, 'html:'.$loc, $domain);
+            }
+            $this->pushPath(
+                $items,
+                ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_OG_IMAGE, $loc),
+                'home_page',
+                0,
+                'og_image:'.$loc,
+                $domain
+            );
+        }
+
+        foreach (ContentManagerController::legalPageMap() as $slug => [$key]) {
+            foreach (ContentLocales::SUPPORTED as $loc) {
+                $html = ContentManagerController::getLocalized($key, $loc);
+                foreach ($this->extractImageUrlsFromHtml($html) as $u) {
+                    $this->pushPath($items, $u, 'legal_page', 0, 'html:'.$slug.':'.$loc, $domain);
+                }
+            }
+        }
+
+        foreach (FaqItem::query()->get(['id', 'question', 'answer']) as $faq) {
+            foreach ($this->extractImageUrlsFromHtml($faq->question) as $u) {
+                $this->pushPath($items, $u, 'faq_item', (int) $faq->id, 'question', $domain);
+            }
+            foreach ($this->extractImageUrlsFromHtml($faq->answer) as $u) {
+                $this->pushPath($items, $u, 'faq_item', (int) $faq->id, 'answer', $domain);
+            }
+        }
+
+        if ($domain instanceof Domain) {
+            $segment = FrontendMediaController::domainSegment($domain);
+            $dir = FrontendPublicPath::root().DIRECTORY_SEPARATOR.FrontendMediaController::RELATIVE_DIR.DIRECTORY_SEPARATOR.$segment;
+            if (is_dir($dir)) {
+                foreach (File::files($dir) as $f) {
+                    if (! preg_match('/\.(jpe?g|png|gif|webp|svg|avif)$/i', $f->getFilename())) {
+                        continue;
+                    }
+                    $webPath = '/'.FrontendMediaController::RELATIVE_DIR.'/'.$segment.'/'.basename($f->getFilename());
+                    $items[] = [
+                        'path' => $webPath,
+                        'source_type' => 'frontend_media',
+                        'source_id' => 0,
+                        'usage' => 'cms_uploads',
+                    ];
+                }
+            }
         }
 
         $added = 0;
         $seen = [];
-        foreach ($paths as $item) {
+        foreach ($items as $item) {
             $path = $item['path'];
+            if ($path === '' || $path === null) {
+                continue;
+            }
             if (isset($seen[$path])) {
                 $media = $seen[$path];
             } else {
                 $media = Media::firstOrCreate(
                     ['path' => $path],
                     [
-                        'filename' => basename($path),
+                        'filename' => basename(parse_url($path, PHP_URL_PATH) ?: $path),
                         'alt_text' => null,
                         'file_size' => null,
                         'mime_type' => null,
@@ -87,22 +161,128 @@ class ImageSeoController extends Controller
                     $added++;
                 }
             }
-            if ($item['source_id'] && $media->id) {
+            if ($media->id) {
                 MediaSource::firstOrCreate(
                     [
                         'media_id' => $media->id,
                         'source_type' => $item['source_type'],
                         'source_id' => $item['source_id'],
-                        'usage' => 'og_image',
-                    ]
+                        'usage' => $item['usage'],
+                    ],
+                    []
                 );
             }
         }
 
         return response()->json([
-            'message' => "Discovery complete. {$added} new image(s) added.",
+            'message' => "Discovery complete. {$added} new image record(s) created; existing images got extra source links where found.",
             'added' => $added,
         ]);
+    }
+
+    /**
+     * @param  list<array{path:string,source_type:string,source_id:int,usage:string}>  $items
+     */
+    private function pushPath(array &$items, ?string $raw, string $sourceType, int $sourceId, string $usage, ?Domain $domain): void
+    {
+        $path = $this->normalizeToMediaPath($raw, $domain);
+        if ($path === null || $path === '') {
+            return;
+        }
+        $items[] = [
+            'path' => $path,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'usage' => $usage,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractImageUrlsFromHtml(?string $html): array
+    {
+        if ($html === null || $html === '') {
+            return [];
+        }
+        $urls = [];
+        if (preg_match_all('/<img[^>]+src\s*=\s*["\']([^"\']+)["\']/i', $html, $m)) {
+            $urls = array_merge($urls, $m[1]);
+        }
+        if (preg_match_all('/<img[^>]+data-src\s*=\s*["\']([^"\']+)["\']/i', $html, $m)) {
+            $urls = array_merge($urls, $m[1]);
+        }
+        if (preg_match_all('/url\(\s*["\']?([^"\'()]+\.(?:jpe?g|png|gif|webp|svg|avif))["\']?\s*\)/i', $html, $m)) {
+            $urls = array_merge($urls, $m[1]);
+        }
+
+        return array_values(array_unique(array_filter(array_map('trim', $urls))));
+    }
+
+    private function normalizeToMediaPath(?string $ref, ?Domain $domain): ?string
+    {
+        if ($ref === null) {
+            return null;
+        }
+        $ref = trim($ref);
+        if ($ref === '') {
+            return null;
+        }
+        $ref = preg_replace('/\?.*$/s', '', $ref) ?? $ref;
+        if (preg_match('#^(data:|blob:|javascript:)#i', $ref)) {
+            return null;
+        }
+
+        $base = $domain instanceof Domain ? rtrim($domain->publicSiteBaseUrl(), '/') : '';
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if ($base !== '' && str_starts_with($ref, $base.'/')) {
+            $tail = substr($ref, strlen($base));
+
+            return $this->normalizeToMediaPath($tail, $domain);
+        }
+
+        if (preg_match('#^//[^/]+(/.*)$#', $ref, $m)) {
+            return $this->normalizeToMediaPath($m[1], $domain);
+        }
+
+        if (preg_match('#^https?://#i', $ref)) {
+            if ($base !== '' && str_starts_with($ref, $base.'/')) {
+                return $this->normalizeToMediaPath(substr($ref, strlen($base)), $domain);
+            }
+            if ($appUrl !== '' && str_starts_with($ref, $appUrl.'/storage/')) {
+                return substr($ref, strlen($appUrl));
+            }
+            if ($appUrl !== '' && str_starts_with($ref, $appUrl.'/')) {
+                $tail = substr($ref, strlen($appUrl));
+
+                return $this->normalizeToMediaPath($tail, $domain);
+            }
+
+            return $ref;
+        }
+
+        if (preg_match('#^/cms-uploads/.+#i', $ref)) {
+            return $ref;
+        }
+
+        if (preg_match('#^/storage/.+#i', $ref)) {
+            return $ref;
+        }
+
+        if (preg_match('#^/uploads/.+#i', $ref)) {
+            return $ref;
+        }
+
+        if (preg_match('#^storage/(uploads/.+)#i', $ref, $m)) {
+            return '/'.$m[1];
+        }
+
+        if (preg_match('#^uploads/.+#i', $ref)) {
+            return '/storage/'.$ref;
+        }
+
+        return null;
     }
 
     /**
@@ -142,8 +322,7 @@ class ImageSeoController extends Controller
             return response()->json(['message' => 'File not found on disk.'], 404);
         }
 
-        $result = $this->compressImage($absolutePath);
-        if ($result === false) {
+        if (! ImageToolkit::compress($absolutePath)) {
             return response()->json(['message' => 'Compression failed or format not supported.'], 422);
         }
 
@@ -173,104 +352,27 @@ class ImageSeoController extends Controller
             return response()->json(['message' => 'File not found on disk.'], 404);
         }
 
-        $webpPath = $this->convertToWebP($absolutePath);
-        if (! $webpPath) {
+        $webpPath = ImageToolkit::convertToWebP($absolutePath);
+        if ($webpPath === null) {
             return response()->json(['message' => 'WebP conversion failed or format not supported.'], 422);
         }
 
-        $relativeWebp = str_replace(public_path(), '', $webpPath);
-        $relativeWebp = ltrim(str_replace('\\', '/', $relativeWebp), '/');
-        $media->webp_path = $relativeWebp;
+        $webpNorm = str_replace('\\', '/', $webpPath);
+        $publicNorm = rtrim(str_replace('\\', '/', public_path()), '/');
+        $frontNorm = rtrim(str_replace('\\', '/', FrontendPublicPath::root()), '/');
+        if (str_starts_with($webpNorm, $publicNorm.'/')) {
+            $relativeWebp = ltrim(substr($webpNorm, strlen($publicNorm)), '/');
+        } elseif (str_starts_with($webpNorm, $frontNorm.'/')) {
+            $relativeWebp = ltrim(substr($webpNorm, strlen($frontNorm)), '/');
+        } else {
+            $relativeWebp = ltrim(str_replace('\\', '/', str_replace(public_path(), '', $webpPath)), '/');
+        }
+        $media->webp_path = '/'.$relativeWebp;
         $media->save();
 
         return response()->json([
             'message' => 'WebP version created.',
             'webp_path' => $media->webp_path,
         ]);
-    }
-
-    private function compressImage(string $path): bool
-    {
-        if (! function_exists('imagejpeg') || ! function_exists('imagecreatefromjpeg')) {
-            return false;
-        }
-
-        $info = @getimagesize($path);
-        if (! $info) {
-            return false;
-        }
-
-        $mime = $info['mime'] ?? '';
-        $image = null;
-        if ($mime === 'image/jpeg') {
-            $image = @imagecreatefromjpeg($path);
-        } elseif ($mime === 'image/png') {
-            $image = @imagecreatefrompng($path);
-            if ($image) {
-                imagealphablending($image, true);
-                imagesavealpha($image, true);
-            }
-        } elseif ($mime === 'image/gif') {
-            $image = @imagecreatefromgif($path);
-        }
-
-        if (! $image) {
-            return false;
-        }
-
-        $quality = 82;
-        $result = false;
-        if ($mime === 'image/jpeg') {
-            $result = imagejpeg($image, $path, $quality);
-        } elseif ($mime === 'image/png') {
-            $result = imagepng($image, $path, (int) round(9 - (9 * $quality / 100)));
-        } elseif ($mime === 'image/gif') {
-            $result = imagegif($image, $path);
-        }
-
-        imagedestroy($image);
-
-        return $result;
-    }
-
-    private function convertToWebP(string $path): ?string
-    {
-        if (! function_exists('imagewebp')) {
-            return null;
-        }
-
-        $info = @getimagesize($path);
-        if (! $info) {
-            return null;
-        }
-
-        $mime = $info['mime'] ?? '';
-        $image = null;
-        if ($mime === 'image/jpeg') {
-            $image = @imagecreatefromjpeg($path);
-        } elseif ($mime === 'image/png') {
-            $image = @imagecreatefrompng($path);
-            if ($image) {
-                imagealphablending($image, true);
-                imagesavealpha($image, true);
-            }
-        } elseif ($mime === 'image/gif') {
-            $image = @imagecreatefromgif($path);
-        } elseif ($mime === 'image/webp') {
-            $image = @imagecreatefromwebp($path);
-        }
-
-        if (! $image) {
-            return null;
-        }
-
-        $dir = dirname($path);
-        $base = pathinfo($path, PATHINFO_FILENAME);
-        $webpPath = $dir.DIRECTORY_SEPARATOR.$base.'.webp';
-
-        $ok = imagewebp($image, $webpPath, 85);
-        imagedestroy($image);
-
-        return $ok ? $webpPath : null;
     }
 }

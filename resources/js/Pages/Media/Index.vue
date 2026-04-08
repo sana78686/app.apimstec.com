@@ -159,7 +159,34 @@ function confirmDelete(item) {
   router.delete(route('media.destroy', item.name), { preserveScroll: true });
 }
 
+function formatFileSize(bytes) {
+  if (bytes == null) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function canRasterCompress(name) {
+  return /\.(jpe?g|png|gif)$/i.test(name);
+}
+
+function canWebp(name) {
+  return /\.(jpe?g|png|gif|webp)$/i.test(name) && !/\.webp$/i.test(name);
+}
+
+function compressItem(item) {
+  if (!canRasterCompress(item.name)) return;
+  if (!window.confirm(`Compress "${item.name}" in place? JPEG/PNG quality will be reduced.`)) return;
+  router.post(route('media.compress', item.name), {}, { preserveScroll: true });
+}
+
+function webpItem(item) {
+  if (!canWebp(item.name)) return;
+  router.post(route('media.webp', item.name), {}, { preserveScroll: true });
+}
+
 const flashSuccess = computed(() => page.props.flash?.success || '');
+const flashError = computed(() => page.props.flash?.error || '');
 </script>
 
 <template>
@@ -173,6 +200,7 @@ const flashSuccess = computed(() => page.props.flash?.success || '');
         <h1 class="admin-form-page-title">Media library</h1>
         <p class="admin-form-page-desc text-muted small">
           Files are saved under <code>public/{{ uploadSubdir }}/{{ domainSegment || '…' }}/</code> on the server that holds the React <code>public</code> folder for this tenant (<strong>{{ tenantDomain || 'pick a site' }}</strong>).
+          Set <code>FRONTEND_PUBLIC_PATH</code> in the CMS <code>.env</code> if that folder is not next to Laravel. Deploy must ship this directory to the live host, and nginx must serve <code>/cms-uploads/</code> as static files (not the SPA fallback).
           Names use your site key plus an optional label and random suffix. Thumbnails load from the CMS so you can preview even before the live domain serves the same path.
         </p>
       </div>
@@ -183,6 +211,10 @@ const flashSuccess = computed(() => page.props.flash?.success || '');
 
       <div v-if="flashSuccess" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
         {{ flashSuccess }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <div v-if="flashError" class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        {{ flashError }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <p v-if="copyHint" class="small text-success mb-3" role="status">{{ copyHint }}</p>
@@ -237,10 +269,32 @@ const flashSuccess = computed(() => page.props.flash?.success || '');
             </div>
             <div class="media-card-body">
               <div class="media-card-name text-truncate small font-monospace" :title="item.name">{{ item.name }}</div>
+              <p v-if="item.size != null" class="small text-muted mb-1 mb-md-2">
+                {{ formatFileSize(item.size) }}
+                <span v-if="item.has_webp" class="badge bg-success ms-1">WebP</span>
+              </p>
               <div class="media-card-actions">
                 <button type="button" class="btn btn-outline-secondary btn-sm" @click="copyLink(item)">Copy link</button>
                 <button type="button" class="btn btn-outline-primary btn-sm" @click="openEdit(item)">Replace</button>
                 <button type="button" class="btn btn-outline-primary btn-sm" @click="openRename(item)">Rename</button>
+                <button
+                  v-if="canRasterCompress(item.name)"
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  title="JPEG/PNG/GIF only"
+                  @click="compressItem(item)"
+                >
+                  Compress
+                </button>
+                <button
+                  v-if="canWebp(item.name) && !item.has_webp"
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  title="Create a .webp next to this file"
+                  @click="webpItem(item)"
+                >
+                  WebP
+                </button>
                 <button type="button" class="btn btn-outline-danger btn-sm" @click="confirmDelete(item)">Delete</button>
               </div>
             </div>

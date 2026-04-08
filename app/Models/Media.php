@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\FrontendPublicPath;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -36,7 +37,13 @@ class Media extends Model
         if (! $this->isLocal()) {
             return null;
         }
-        $path = public_path(ltrim($this->path, '/'));
+        $p = ltrim(str_replace('\\', '/', (string) ($this->path ?? '')), '/');
+        if (str_starts_with($p, 'cms-uploads/')) {
+            return FrontendPublicPath::absoluteFromWebPath($p);
+        }
+
+        $path = public_path($p);
+
         return file_exists($path) ? $path : null;
     }
 }
