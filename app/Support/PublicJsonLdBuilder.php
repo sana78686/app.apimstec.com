@@ -52,7 +52,7 @@ final class PublicJsonLdBuilder
         }
         $logo = trim((string) ($homeRow['og_image'] ?? ''));
         if ($logo === '' || ! str_starts_with($logo, 'http')) {
-            $logo = $origin.'/logos/compresspdf.png';
+            $logo = $origin.'/favicon.png';
         }
 
         $webPage = [

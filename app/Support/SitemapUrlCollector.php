@@ -46,12 +46,39 @@ final class SitemapUrlCollector
 
         $now = now()->format('Y-m-d');
         foreach ($locales as $locale) {
+            $enc = rawurlencode($locale);
             $urls[] = [
-                'loc' => $base.'/'.rawurlencode($locale).'/',
+                'loc' => $base.'/'.$enc.'/',
                 'lastmod' => $now,
                 'changefreq' => 'weekly',
                 'priority' => '1.0',
             ];
+            $urls[] = [
+                'loc' => $base.'/'.$enc.'/compress',
+                'lastmod' => $now,
+                'changefreq' => 'monthly',
+                'priority' => '0.9',
+            ];
+            $urls[] = [
+                'loc' => $base.'/'.$enc.'/blog',
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
+            ];
+            $urls[] = [
+                'loc' => $base.'/'.$enc.'/contact',
+                'lastmod' => $now,
+                'changefreq' => 'yearly',
+                'priority' => '0.4',
+            ];
+            foreach (['terms', 'privacy-policy', 'disclaimer', 'cookie-policy', 'about-us'] as $legalSlug) {
+                $urls[] = [
+                    'loc' => $base.'/'.$enc.'/legal/'.$legalSlug,
+                    'lastmod' => $now,
+                    'changefreq' => 'yearly',
+                    'priority' => '0.3',
+                ];
+            }
         }
 
         foreach (Page::query()

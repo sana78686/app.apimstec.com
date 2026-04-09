@@ -193,10 +193,14 @@ async function submit() {
                   <option value="article">Article</option>
                   <option value="product">Product</option>
                   <option value="breadcrumb">Breadcrumb</option>
+                  <option value="faq">FAQ</option>
                 </select>
                 <InputError :message="errors.schema_type?.[0]" />
               </div>
             </div>
+            <p v-if="form.schema_type === 'faq'" class="text-muted small mb-3">
+              FAQ page tip: add each question as a heading and the answer below it in the content editor.
+            </p>
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <LabelWithTooltip for="parent_id" value="Parent page" optional />

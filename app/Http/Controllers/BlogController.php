@@ -150,6 +150,8 @@ class BlogController extends Controller
             }
         }
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Blog created.', 'blog' => $this->blogToArray($blog)], 201);
         }
@@ -206,6 +208,8 @@ class BlogController extends Controller
             'og_image' => $request->og_image,
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Blog updated.', 'blog' => $this->blogToArray($blog)]);
         }
@@ -216,6 +220,7 @@ class BlogController extends Controller
     {
         $blog = $this->resolveBlog($blog);
         $blog->delete();
+        ContentManagerController::bumpPublicApiCacheGeneration();
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Blog deleted.']);
         }
@@ -232,6 +237,7 @@ class BlogController extends Controller
         $blog->visibility   = $request->visibility;
         $blog->is_published = ($blog->visibility === Blog::VISIBILITY_VISIBLE);
         $blog->save();
+        ContentManagerController::bumpPublicApiCacheGeneration();
         return response()->json([
             'visibility'   => $blog->visibility,
             'is_published' => $blog->is_published,

@@ -99,7 +99,7 @@ class PageController extends Controller
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))],
             'content' => 'nullable|string',
-            'schema_type' => ['nullable', 'string', Rule::in(['page', 'article', 'product', 'breadcrumb'])],
+            'schema_type' => ['nullable', 'string', Rule::in(['page', 'article', 'product', 'breadcrumb', 'faq'])],
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
@@ -124,6 +124,8 @@ class PageController extends Controller
             'is_published' => ($visibility === Page::VISIBILITY_VISIBLE),
             'sort_order' => (int) ($request->sort_order ?? 0),
         ]);
+
+        ContentManagerController::bumpPublicApiCacheGeneration();
 
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Page created.', 'page' => $this->pageToArray($page->load('children'))], 201);
@@ -160,7 +162,7 @@ class PageController extends Controller
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique(Page::class, 'slug')->where(fn ($q) => $q->where('locale', ContentLocales::normalize($request->input('locale'))))->ignore($page->id)],
             'content' => 'nullable|string',
-            'schema_type' => ['nullable', 'string', Rule::in(['page', 'article', 'product', 'breadcrumb'])],
+            'schema_type' => ['nullable', 'string', Rule::in(['page', 'article', 'product', 'breadcrumb', 'faq'])],
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'placement' => 'nullable|string|in:header,footer,both',
@@ -191,6 +193,8 @@ class PageController extends Controller
             'sort_order' => (int) ($request->sort_order ?? 0),
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Page updated.', 'page' => $this->pageToArray($page->load('children'))]);
         }
@@ -207,6 +211,7 @@ class PageController extends Controller
             return redirect()->route('pages.index')->with('error', 'Cannot delete a page that has children.');
         }
         $page->delete();
+        ContentManagerController::bumpPublicApiCacheGeneration();
         if (request()->is('api/*')) {
             return response()->json(['message' => 'Page deleted.']);
         }
@@ -224,6 +229,7 @@ class PageController extends Controller
         $page->is_published = ($page->visibility === Page::VISIBILITY_VISIBLE);
         $page->meta_robots  = $page->metaRobotsForVisibility();
         $page->save();
+        ContentManagerController::bumpPublicApiCacheGeneration();
         return response()->json([
             'visibility'   => $page->visibility,
             'is_published' => $page->is_published,
@@ -294,6 +300,8 @@ class PageController extends Controller
             'og_description' => $request->og_description,
             'og_image' => $request->og_image,
         ]);
+
+        ContentManagerController::bumpPublicApiCacheGeneration();
 
         if (request()->is('api/*')) {
             return response()->json(['message' => 'SEO settings saved.', 'page' => $this->pageToArray($page->load('children'))]);

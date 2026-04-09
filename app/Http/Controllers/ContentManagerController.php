@@ -231,6 +231,7 @@ class ContentManagerController extends Controller
         self::setLocalized(self::KEY_CONTACT_EMAIL, $loc, $validated['contact_email'] ?? '');
         self::setLocalized(self::KEY_CONTACT_PHONE, $loc, $validated['contact_phone'] ?? '');
         self::setLocalized(self::KEY_CONTACT_ADDRESS, $loc, $validated['contact_address'] ?? '');
+        self::bumpPublicApiCacheGeneration();
 
         return back()->with('success', 'Contact details saved.');
     }
@@ -257,6 +258,7 @@ class ContentManagerController extends Controller
             ContentLocales::normalize($validated['locale']),
             $validated['terms_content'] ?? ''
         );
+        self::bumpPublicApiCacheGeneration();
 
         return back()->with('success', 'Terms and conditions saved.');
     }
@@ -280,6 +282,7 @@ class ContentManagerController extends Controller
             $field => 'nullable|string|max:100000',
         ]);
         self::setLocalized($key, ContentLocales::normalize($validated['locale']), $validated[$field] ?? '');
+        self::bumpPublicApiCacheGeneration();
 
         return back()->with('success', $successMessage);
     }

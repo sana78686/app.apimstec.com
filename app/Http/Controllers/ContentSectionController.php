@@ -50,6 +50,8 @@ class ContentSectionController extends Controller
             'sort_order' => (int) $maxOrder + 1,
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         return redirect()->route('content-manager.sections')->with('success', 'Section added.');
     }
 
@@ -72,12 +74,15 @@ class ContentSectionController extends Controller
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         return redirect()->route('content-manager.sections')->with('success', 'Section updated.');
     }
 
     public function destroy(string $section): RedirectResponse
     {
         ContentSection::query()->findOrFail($section)->delete();
+        ContentManagerController::bumpPublicApiCacheGeneration();
 
         return redirect()->route('content-manager.sections')->with('success', 'Section removed.');
     }
@@ -106,6 +111,8 @@ class ContentSectionController extends Controller
             'sort_order' => (int) $maxOrder + 1,
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         return redirect()->route('content-manager.sections')->with('success', 'Section item added.');
     }
 
@@ -130,12 +137,15 @@ class ContentSectionController extends Controller
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
 
+        ContentManagerController::bumpPublicApiCacheGeneration();
+
         return redirect()->route('content-manager.sections')->with('success', 'Section item updated.');
     }
 
     public function destroyItem(string $item): RedirectResponse
     {
         ContentSectionItem::query()->findOrFail($item)->delete();
+        ContentManagerController::bumpPublicApiCacheGeneration();
 
         return redirect()->route('content-manager.sections')->with('success', 'Section item removed.');
     }
