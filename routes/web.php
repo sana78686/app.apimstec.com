@@ -255,6 +255,7 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices'])->name('profile.logoutOtherDevices');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
         Route::middleware('permission:users.view')->prefix('users')->name('users.')->group(function () {

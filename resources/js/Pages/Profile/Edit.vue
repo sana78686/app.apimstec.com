@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
+import LogoutOtherDevicesForm from './Partials/LogoutOtherDevicesForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head } from '@inertiajs/vue3';
@@ -31,6 +32,10 @@ defineProps({
 
         <div class="admin-box admin-box-compact">
             <UpdatePasswordForm class="max-w-xl" />
+        </div>
+
+        <div class="admin-box admin-box-compact">
+            <LogoutOtherDevicesForm class="max-w-xl" />
         </div>
 
         <div class="admin-box">
