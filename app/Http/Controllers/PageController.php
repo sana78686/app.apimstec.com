@@ -55,19 +55,26 @@ class PageController extends Controller
         ];
     }
 
-    public function index(): Response|JsonResponse
+    public function index(Request $request): Response|JsonResponse
     {
         $this->reconnectTenantFromSession();
-        $loc = $this->cmsLocale(request());
-        $pages = Page::with(['children' => fn ($q) => $q->where('locale', $loc)])
+        $requestedLocale = strtolower(trim((string) $request->query('locale', 'all')));
+        $pages = Page::with(['children' => function ($q) use ($requestedLocale) {
+            if (in_array($requestedLocale, ContentLocales::SUPPORTED, true)) {
+                $q->where('locale', $requestedLocale);
+            }
+        }])
             ->whereNull('parent_id')
-            ->where('locale', $loc)
+            ->when(
+                in_array($requestedLocale, ContentLocales::SUPPORTED, true),
+                fn ($q) => $q->where('locale', $requestedLocale)
+            )
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
             ->map(fn ($p) => $this->pageToArray($p));
 
-        if (request()->is('api/*')) {
+        if ($request->is('api/*')) {
             return response()->json(['pages' => $pages]);
         }
         return Inertia::render('Pages/Index');

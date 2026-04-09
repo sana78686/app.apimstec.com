@@ -421,8 +421,16 @@ class PublicApiController extends Controller
     {
         $locale = $this->publicLocale($request);
         $cards = HomeCard::where('locale', $locale)->ordered()->get(['id', 'title', 'description', 'icon', 'sort_order']);
+        $section = [
+            'title' => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_HOW_TITLE, $locale),
+            'description' => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_HOW_DESCRIPTION, $locale),
+            'card_style' => ContentManagerController::getLocalized(ContentManagerController::KEY_HOME_HOW_CARD_STYLE, $locale) ?: 'numbered',
+        ];
 
-        return response()->json(['cards' => $cards]);
+        return response()->json([
+            'section' => $section,
+            'cards' => $cards,
+        ]);
     }
 
     /**

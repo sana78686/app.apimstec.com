@@ -73,17 +73,17 @@ class BlogController extends Controller
         ];
     }
 
-    public function index(): Response|JsonResponse
+    public function index(Request $request): Response|JsonResponse
     {
         $this->reconnectTenantFromSession();
-        $loc = $this->cmsLocale(request());
-        $blogs = Blog::with('author:id,name')
-            ->where('locale', $loc)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn ($b) => $this->blogToArray($b));
+        $requestedLocale = strtolower(trim((string) $request->query('locale', 'all')));
+        $q = Blog::with('author:id,name')->orderByDesc('created_at');
+        if (in_array($requestedLocale, ContentLocales::SUPPORTED, true)) {
+            $q->where('locale', $requestedLocale);
+        }
+        $blogs = $q->get()->map(fn ($b) => $this->blogToArray($b));
 
-        if (request()->is('api/*')) {
+        if ($request->is('api/*')) {
             return response()->json(['blogs' => $blogs]);
         }
         return Inertia::render('Blogs/Index');

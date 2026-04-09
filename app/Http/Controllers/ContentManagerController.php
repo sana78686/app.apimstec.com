@@ -25,6 +25,9 @@ class ContentManagerController extends Controller
     public const KEY_HOME_OG_IMAGE = 'home_og_image';
     public const KEY_HOME_META_ROBOTS = 'home_meta_robots';
     public const KEY_HOME_CANONICAL_URL = 'home_canonical_url';
+    public const KEY_HOME_HOW_TITLE = 'home_how_title';
+    public const KEY_HOME_HOW_DESCRIPTION = 'home_how_description';
+    public const KEY_HOME_HOW_CARD_STYLE = 'home_how_card_style';
 
     /** Google Search Console verification meta, gtag/GTM snippets, etc. — injected into React app <head>. */
     public const KEY_HOME_FRONTEND_HEAD_SNIPPET = 'home_frontend_head_snippet';
@@ -99,6 +102,9 @@ class ContentManagerController extends Controller
             'homeMetaRobots' => self::getLocalized(self::KEY_HOME_META_ROBOTS, $loc) ?: 'index,follow',
             'homeCanonicalUrl' => self::getLocalized(self::KEY_HOME_CANONICAL_URL, $loc),
             'homeFrontendHeadSnippet' => self::getLocalized(self::KEY_HOME_FRONTEND_HEAD_SNIPPET, $loc),
+            'homeHowTitle' => self::getLocalized(self::KEY_HOME_HOW_TITLE, $loc),
+            'homeHowDescription' => self::getLocalized(self::KEY_HOME_HOW_DESCRIPTION, $loc),
+            'homeHowCardStyle' => self::getLocalized(self::KEY_HOME_HOW_CARD_STYLE, $loc) ?: 'numbered',
             'flash' => ['success' => session('success')],
         ]);
     }
@@ -124,6 +130,9 @@ class ContentManagerController extends Controller
             'canonical_url'    => ['sometimes', 'nullable', 'string', 'max:500'],
             'frontend_head_snippet' => ['sometimes', 'nullable', 'string', 'max:65535'],
             'home_page_content' => ['sometimes', 'nullable', 'string'],
+            'home_how_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'home_how_description' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'home_how_card_style' => ['sometimes', 'nullable', 'string', Rule::in(['numbered', 'icon', 'simple'])],
         ]);
 
         $loc = ContentLocales::normalize($validated['locale']);
@@ -162,6 +171,16 @@ class ContentManagerController extends Controller
         if (array_key_exists('home_page_content', $validated)) {
             ContentManagerSetting::set(self::homePageContentKey($loc), (string) ($validated['home_page_content'] ?? ''));
         }
+        if (array_key_exists('home_how_title', $validated)) {
+            self::setLocalized(self::KEY_HOME_HOW_TITLE, $loc, (string) ($validated['home_how_title'] ?? ''));
+        }
+        if (array_key_exists('home_how_description', $validated)) {
+            self::setLocalized(self::KEY_HOME_HOW_DESCRIPTION, $loc, (string) ($validated['home_how_description'] ?? ''));
+        }
+        if (array_key_exists('home_how_card_style', $validated)) {
+            $style = (string) ($validated['home_how_card_style'] ?? '');
+            self::setLocalized(self::KEY_HOME_HOW_CARD_STYLE, $loc, $style !== '' ? $style : 'numbered');
+        }
 
         self::bumpPublicApiCacheGeneration();
 
@@ -180,6 +199,9 @@ class ContentManagerController extends Controller
             'iconOptions' => HomeCard::iconOptions(),
             'activeTab' => $tab,
             'cmsLocale' => $loc,
+            'homeHowTitle' => self::getLocalized(self::KEY_HOME_HOW_TITLE, $loc),
+            'homeHowDescription' => self::getLocalized(self::KEY_HOME_HOW_DESCRIPTION, $loc),
+            'homeHowCardStyle' => self::getLocalized(self::KEY_HOME_HOW_CARD_STYLE, $loc) ?: 'numbered',
             'flash' => ['success' => session('success')],
         ]);
     }

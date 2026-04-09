@@ -21,6 +21,10 @@ const props = defineProps({
   faqItems: { type: Array, default: () => [] },
   cards: { type: Array, default: () => [] },
   iconOptions: { type: Object, default: () => ({}) },
+  cmsLocale: { type: String, default: 'id' },
+  homeHowTitle: { type: String, default: '' },
+  homeHowDescription: { type: String, default: '' },
+  homeHowCardStyle: { type: String, default: 'numbered' },
   activeTab: { type: String, default: 'faq' }, // from URL: faq | use-cards
   flash: { type: Object, default: () => ({}) },
 });
@@ -150,6 +154,19 @@ function iconEmoji(key) {
 function iconLabel(key) {
   return props.iconOptions?.[key] ?? key;
 }
+
+const homeHowForm = useForm({
+  locale: props.cmsLocale || 'id',
+  home_how_title: props.homeHowTitle || '',
+  home_how_description: props.homeHowDescription || '',
+  home_how_card_style: props.homeHowCardStyle || 'numbered',
+});
+
+function saveHowSection() {
+  homeHowForm.put(route('content-manager.home-seo.update'), {
+    preserveScroll: true,
+  });
+}
 </script>
 
 <template>
@@ -241,6 +258,35 @@ function iconLabel(key) {
 
         <!-- Use cards tab panel -->
         <div v-show="effectiveTab === 'use-cards'" class="admin-list-page">
+          <div class="admin-box admin-box-smooth p-3 mb-3">
+            <h2 class="h6 mb-2">How it works section settings</h2>
+            <p class="admin-list-text-muted mb-3">Configure section heading and card style for the public home section.</p>
+            <form class="d-flex flex-column gap-2" @submit.prevent="saveHowSection">
+              <CmsLocaleSelect v-model="homeHowForm.locale" id="home-how-locale" :error="homeHowForm.errors.locale" />
+              <div>
+                <label class="form-label small fw-semibold">Section title</label>
+                <TextInput v-model="homeHowForm.home_how_title" class="form-control form-control-sm" placeholder="e.g. How it works" />
+                <InputError :message="homeHowForm.errors.home_how_title" />
+              </div>
+              <div>
+                <label class="form-label small fw-semibold">Section description</label>
+                <textarea v-model="homeHowForm.home_how_description" class="form-control form-control-sm" rows="2" placeholder="Optional description under title"></textarea>
+                <InputError :message="homeHowForm.errors.home_how_description" />
+              </div>
+              <div>
+                <label class="form-label small fw-semibold">Card style</label>
+                <select v-model="homeHowForm.home_how_card_style" class="form-select form-select-sm" style="max-width: 16rem;">
+                  <option value="numbered">Numbered cards</option>
+                  <option value="icon">Icon cards</option>
+                  <option value="simple">Simple description cards</option>
+                </select>
+                <InputError :message="homeHowForm.errors.home_how_card_style" />
+              </div>
+              <div>
+                <PrimaryButton type="submit" class="btn btn-sm" :disabled="homeHowForm.processing">Save section settings</PrimaryButton>
+              </div>
+            </form>
+          </div>
           <div class="admin-list-page-header">
             <div>
               <h1 class="admin-list-page-title">Use cards</h1>

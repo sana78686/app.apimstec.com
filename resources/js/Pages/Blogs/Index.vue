@@ -8,11 +8,25 @@ const blogs = ref([]);
 const loading = ref(true);
 const successMessage = ref('');
 const searchQuery = ref('');
+const selectedLocale = ref('all');
+
+const LOCALE_ORDER = ['id', 'en', 'ms', 'es', 'fr', 'ar', 'ru'];
+const localeButtons = computed(() => {
+  const present = new Set(blogs.value.map((b) => String(b.locale || '').toLowerCase()).filter(Boolean));
+  const ordered = LOCALE_ORDER.filter((code) => present.has(code));
+  for (const code of present) {
+    if (!ordered.includes(code)) ordered.push(code);
+  }
+  return [{ value: 'all', label: 'All' }, ...ordered.map((code) => ({ value: code, label: code.toUpperCase() }))];
+});
 
 const filteredBlogs = computed(() => {
+  const byLocale = selectedLocale.value === 'all'
+    ? blogs.value
+    : blogs.value.filter((b) => String(b.locale || '').toLowerCase() === selectedLocale.value);
   const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return blogs.value;
-  return blogs.value.filter(
+  if (!q) return byLocale;
+  return byLocale.filter(
     (b) =>
       (b.title || '').toLowerCase().includes(q) ||
       (b.slug || '').toLowerCase().includes(q) ||
@@ -28,6 +42,7 @@ const pagedBlogs  = computed(() => {
   return filteredBlogs.value.slice(start, start + perPage);
 });
 watch(searchQuery, () => { currentPage.value = 1; });
+watch(selectedLocale, () => { currentPage.value = 1; });
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
@@ -36,7 +51,7 @@ onMounted(async () => {
   else if (s === 'updated') successMessage.value = 'Blog updated.';
   else if (s === 'deleted') successMessage.value = 'Blog deleted.';
   try {
-    const { data } = await window.axios.get('/api/blogs');
+    const { data } = await window.axios.get('/api/blogs?locale=all');
     blogs.value = data.blogs ?? [];
   } finally {
     loading.value = false;
@@ -96,6 +111,18 @@ async function changeStatus(b, newVisibility) {
         <div>
           <h1 class="admin-list-page-title">Blogs</h1>
           <p class="admin-list-page-desc">Blog posts and articles.</p>
+        </div>
+        <div class="admin-locale-filter-row" role="tablist" aria-label="Filter blogs by language">
+          <button
+            v-for="opt in localeButtons"
+            :key="opt.value"
+            type="button"
+            class="admin-locale-chip"
+            :class="{ 'admin-locale-chip--active': selectedLocale === opt.value }"
+            @click="selectedLocale = opt.value"
+          >
+            {{ opt.label }}
+          </button>
         </div>
         <Link :href="route('blogs.create')" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -183,3 +210,27 @@ async function changeStatus(b, newVisibility) {
     </div>
   </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.admin-locale-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  align-items: center;
+}
+.admin-locale-chip {
+  border: 1px solid var(--admin-card-border, #e6e8ef);
+  background: #fff;
+  color: var(--admin-text-muted, #666687);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+}
+.admin-locale-chip--active {
+  color: #fff;
+  background: var(--admin-primary, #4945ff);
+  border-color: var(--admin-primary, #4945ff);
+}
+</style>
