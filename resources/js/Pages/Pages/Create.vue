@@ -25,6 +25,7 @@ const form = reactive({
   title: '',
   slug: '',
   content: '',
+  schema_type: 'page',
   meta_title: '',
   meta_description: '',
   placement: '',
@@ -149,6 +150,16 @@ async function submit() {
                   <option value="footer">Footer</option>
                   <option value="both">Both</option>
                 </select>
+              </div>
+              <div class="col-md-6">
+                <LabelWithTooltip for="schema_type" value="Page type" tip="Schema type for this page." optional />
+                <select id="schema_type" v-model="form.schema_type" class="form-select form-select-sm">
+                  <option value="page">Page</option>
+                  <option value="article">Article</option>
+                  <option value="product">Product</option>
+                  <option value="breadcrumb">Breadcrumb</option>
+                </select>
+                <InputError :message="errors.schema_type?.[0]" />
               </div>
             </div>
             <div class="row g-3 mb-3">

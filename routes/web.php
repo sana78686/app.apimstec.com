@@ -4,6 +4,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ContentManagerController;
 use App\Http\Controllers\FaqSectionController;
 use App\Http\Controllers\CardsSectionController;
+use App\Http\Controllers\ContentSectionController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seo\HomePageSeoController;
@@ -134,6 +135,7 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
                 ->defaults('tab', 'faq');
             Route::get('/faq', fn () => redirect()->route('content-manager.home', ['tab' => 'faq']))->name('faq');
             Route::get('/cards', fn () => redirect()->route('content-manager.home', ['tab' => 'use-cards']))->name('cards');
+            Route::get('/sections', [ContentSectionController::class, 'index'])->name('sections');
             Route::get('/contact', [ContentManagerController::class, 'contact'])->name('contact');
             Route::put('/contact', [ContentManagerController::class, 'contactUpdate'])->name('contact.update');
             Route::get('/terms', [ContentManagerController::class, 'terms'])->name('terms');
@@ -152,6 +154,12 @@ Route::middleware(['auth', 'verified', 'active.domain'])->group(function () {
             Route::post('/cards', [CardsSectionController::class, 'store'])->name('cards.store');
             Route::put('/cards/{card}', [CardsSectionController::class, 'update'])->name('cards.update');
             Route::delete('/cards/{card}', [CardsSectionController::class, 'destroy'])->name('cards.destroy')->middleware('permission:content.delete');
+            Route::post('/sections', [ContentSectionController::class, 'store'])->name('sections.store');
+            Route::put('/sections/{section}', [ContentSectionController::class, 'update'])->name('sections.update');
+            Route::delete('/sections/{section}', [ContentSectionController::class, 'destroy'])->name('sections.destroy')->middleware('permission:content.delete');
+            Route::post('/sections/{section}/items', [ContentSectionController::class, 'storeItem'])->name('sections.items.store');
+            Route::put('/sections/items/{item}', [ContentSectionController::class, 'updateItem'])->name('sections.items.update');
+            Route::delete('/sections/items/{item}', [ContentSectionController::class, 'destroyItem'])->name('sections.items.destroy')->middleware('permission:content.delete');
         });
 
         Route::get('/media', [FrontendMediaController::class, 'index'])->name('media.index');

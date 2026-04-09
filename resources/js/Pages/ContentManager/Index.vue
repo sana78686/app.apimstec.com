@@ -235,6 +235,14 @@ function switchContentLocale(loc) {
           </div>
           <span class="content-manager-home-link-arrow" aria-hidden="true">→</span>
         </Link>
+        <Link :href="route('content-manager.sections')" class="content-manager-home-link admin-box admin-box-smooth">
+          <span class="content-manager-home-link-icon" aria-hidden="true">📚</span>
+          <div>
+            <strong class="content-manager-home-link-title">Sections</strong>
+            <p class="content-manager-home-link-desc text-muted small mb-0">Create unlimited dynamic sections with module lists (paragraphs/cards with icons, numbers, or images).</p>
+          </div>
+          <span class="content-manager-home-link-arrow" aria-hidden="true">→</span>
+        </Link>
       </div>
     </div>
   </AuthenticatedLayout>

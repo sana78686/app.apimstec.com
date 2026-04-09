@@ -413,6 +413,14 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick));
           >
             Blogs
           </Link>
+          <Link
+            :href="route('content-manager.sections')"
+            class="admin-nav-sidebar-link"
+            :class="{ 'is-active': route().current('content-manager.sections') }"
+            @click="closeSidebar"
+          >
+            Sections
+          </Link>
         </template>
         <!-- Gear icon: Account (Profile, Users, Roles, Domains) -->
         <template v-else-if="activeNavSection === 'account'">

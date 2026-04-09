@@ -23,6 +23,7 @@ Route::get('contact', [PublicApiController::class, 'contact'])->name('api.public
 Route::post('contact/send', [PublicApiController::class, 'sendContact'])->name('api.public.contact.send');
 Route::get('faq', [PublicApiController::class, 'faq'])->name('api.public.faq');
 Route::get('home-cards', [PublicApiController::class, 'homeCards'])->name('api.public.home-cards');
+Route::get('sections', [PublicApiController::class, 'sections'])->name('api.public.sections');
 Route::get('home-content', [PublicApiController::class, 'homeContent'])->name('api.public.home-content');
 Route::get('schema/tool', [PublicApiController::class, 'schemaTool'])->name('api.public.schema-tool');
 Route::get('legal-nav', [PublicApiController::class, 'legalNav'])->name('api.public.legal-nav');

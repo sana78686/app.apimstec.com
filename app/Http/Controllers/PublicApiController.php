@@ -6,6 +6,8 @@ use App\Http\Controllers\ContentManagerController;
 use App\Models\AnalyticsSetting;
 use App\Models\Blog;
 use App\Models\ContentManagerSetting;
+use App\Models\ContentSection;
+use App\Models\ContentSectionItem;
 use App\Models\Domain;
 use App\Models\FaqItem;
 use App\Models\HomeCard;
@@ -14,6 +16,7 @@ use App\Models\Page;
 use Carbon\Carbon;
 use App\Support\ContentLocales;
 use App\Support\FrontendAssetUrl;
+use App\Support\FrontendPublicPath;
 use App\Support\PublicJsonLdBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -434,6 +437,22 @@ class PublicApiController extends Controller
     }
 
     /**
+     * Dynamic content sections with nested module items (cards/paragraphs) for frontend rendering.
+     */
+    public function sections(Request $request): JsonResponse
+    {
+        $locale = $this->publicLocale($request);
+        $sections = ContentSection::query()
+            ->where('locale', $locale)
+            ->where('is_active', true)
+            ->with(['items' => fn ($q) => $q->where('is_active', true)->ordered()])
+            ->ordered()
+            ->get(['id', 'locale', 'title', 'description', 'layout', 'sort_order', 'is_active']);
+
+        return response()->json(['sections' => $sections]);
+    }
+
+    /**
      * Home page rich text content and meta/SEO (shown above FAQ on frontend). No auth.
      */
     public function homeContent(Request $request): JsonResponse
@@ -539,7 +558,7 @@ class PublicApiController extends Controller
     public function contentRevision(): JsonResponse
     {
         $times = [];
-        foreach ([Blog::class, Page::class, FaqItem::class, HomeCard::class, Media::class, ContentManagerSetting::class] as $model) {
+        foreach ([Blog::class, Page::class, FaqItem::class, HomeCard::class, ContentSection::class, ContentSectionItem::class, Media::class, ContentManagerSetting::class] as $model) {
             try {
                 $m = $model::query()->max('updated_at');
                 if ($m) {
@@ -570,17 +589,34 @@ class PublicApiController extends Controller
         if ($path === '' || str_contains($path, '..')) {
             abort(404);
         }
-        if (! preg_match('#^uploads/editor/[A-Za-z0-9._-]+$#', $path)) {
-            abort(404);
-        }
-        if (! Storage::disk('public')->exists($path)) {
-            abort(404);
+
+        // Editor uploads on Laravel public disk.
+        if (preg_match('#^uploads/editor/[A-Za-z0-9._-]+$#', $path)) {
+            if (! Storage::disk('public')->exists($path)) {
+                abort(404);
+            }
+
+            return response()->file(Storage::disk('public')->path($path), [
+                'Cross-Origin-Resource-Policy' => 'cross-origin',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=604800',
+            ]);
         }
 
-        return response()->file(Storage::disk('public')->path($path), [
-            'Cross-Origin-Resource-Policy' => 'cross-origin',
-            'Access-Control-Allow-Origin' => '*',
-            'Cache-Control' => 'public, max-age=604800',
-        ]);
+        // Frontend media library files under React public/cms-uploads/... (tenant-specific).
+        if (preg_match('#^cms-uploads/[A-Za-z0-9._/-]+$#', $path)) {
+            $abs = FrontendPublicPath::absoluteFromWebPath($path);
+            if (! is_string($abs) || $abs === '' || ! is_file($abs)) {
+                abort(404);
+            }
+
+            return response()->file($abs, [
+                'Cross-Origin-Resource-Policy' => 'cross-origin',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=604800',
+            ]);
+        }
+
+        abort(404);
     }
 }

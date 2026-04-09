@@ -16,7 +16,21 @@ const emit = defineEmits(['update:modelValue']);
 const uploading = ref(false);
 const uploadError = ref('');
 
-const previewSrc = computed(() => String(props.modelValue || '').trim());
+const previewSrc = computed(() => {
+  const v = String(props.modelValue || '').trim();
+  if (!v) return '';
+  // CMS-only helper: for media-library files, use authenticated preview route so broken public paths
+  // still display while editing.
+  const m = v.match(/\/cms-uploads\/[^/]+\/([^/?#]+)$/i);
+  if (m && m[1]) {
+    try {
+      return route('media.preview', { filename: m[1] });
+    } catch {
+      return v;
+    }
+  }
+  return v;
+});
 
 async function onFileChange(event) {
   const input = event.target;

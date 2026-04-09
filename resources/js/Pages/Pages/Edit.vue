@@ -30,6 +30,7 @@ const form = reactive({
   title: '',
   slug: '',
   content: '',
+  schema_type: 'page',
   meta_title: '',
   meta_description: '',
   placement: '',
@@ -46,6 +47,7 @@ onMounted(async () => {
     form.title = props.page.title ?? '';
     form.slug = props.page.slug ?? '';
     form.content = props.page.content ?? '';
+    form.schema_type = props.page.schema_type ?? 'page';
     form.meta_title = props.page.meta_title ?? '';
     form.meta_description = props.page.meta_description ?? '';
     form.placement = props.page.placement ?? '';
@@ -62,6 +64,7 @@ onMounted(async () => {
     form.title = p.title ?? '';
     form.slug = p.slug ?? '';
     form.content = p.content ?? '';
+    form.schema_type = p.schema_type ?? 'page';
     form.meta_title = p.meta_title ?? '';
     form.meta_description = p.meta_description ?? '';
     form.placement = p.placement ?? '';
@@ -182,6 +185,16 @@ async function submit() {
                   <option value="footer">Footer</option>
                   <option value="both">Both</option>
                 </select>
+              </div>
+              <div class="col-md-6">
+                <LabelWithTooltip for="schema_type" value="Page type" tip="Schema type for this page." optional />
+                <select id="schema_type" v-model="form.schema_type" class="form-select form-select-sm">
+                  <option value="page">Page</option>
+                  <option value="article">Article</option>
+                  <option value="product">Product</option>
+                  <option value="breadcrumb">Breadcrumb</option>
+                </select>
+                <InputError :message="errors.schema_type?.[0]" />
               </div>
             </div>
             <div class="row g-3 mb-3">

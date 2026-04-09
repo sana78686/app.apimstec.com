@@ -32,6 +32,7 @@ Route::prefix('public')->name('api.legacy.public.')->group(function () {
     Route::post('contact/send', [PublicApiController::class, 'sendContact'])->name('contact.send');
     Route::get('faq', [PublicApiController::class, 'faq'])->name('faq');
     Route::get('home-cards', [PublicApiController::class, 'homeCards'])->name('home-cards');
+    Route::get('sections', [PublicApiController::class, 'sections'])->name('sections');
     Route::get('home-content', [PublicApiController::class, 'homeContent'])->name('home-content');
     Route::get('schema/tool', [PublicApiController::class, 'schemaTool'])->name('schema-tool');
     Route::get('legal-nav', [PublicApiController::class, 'legalNav'])->name('legal-nav');
