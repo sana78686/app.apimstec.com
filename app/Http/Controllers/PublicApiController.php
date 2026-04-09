@@ -591,7 +591,7 @@ class PublicApiController extends Controller
         }
 
         // Editor uploads on Laravel public disk.
-        if (preg_match('#^uploads/editor/[A-Za-z0-9._-]+$#', $path)) {
+        if (preg_match('#^uploads/(?:editor|blog|images)/[A-Za-z0-9._/ %-]+$#', $path)) {
             if (! Storage::disk('public')->exists($path)) {
                 abort(404);
             }
