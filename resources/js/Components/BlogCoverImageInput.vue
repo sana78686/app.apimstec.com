@@ -19,8 +19,7 @@ const uploadError = ref('');
 const previewSrc = computed(() => {
   const v = String(props.modelValue || '').trim();
   if (!v) return '';
-  // CMS-only helper: for media-library files, use authenticated preview route so broken public paths
-  // still display while editing.
+  // cms-uploads: use authenticated preview route (file is on CMS server, not frontend)
   const m = v.match(/\/cms-uploads\/[^/]+\/([^/?#]+)$/i);
   if (m && m[1]) {
     try {
@@ -28,6 +27,12 @@ const previewSrc = computed(() => {
     } catch {
       return v;
     }
+  }
+  // uploads/editor/ (blog form upload): file lives in CMS storage, not on the frontend domain.
+  // Convert to /storage/ path so the CMS admin can preview it.
+  const upl = v.match(/\/uploads\/((?:editor|blog|images)\/[^/?#]+)$/i);
+  if (upl && upl[1]) {
+    return '/storage/uploads/' + upl[1];
   }
   return v;
 });

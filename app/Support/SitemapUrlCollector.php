@@ -8,7 +8,8 @@ use App\Models\Page;
 use Illuminate\Support\Collection;
 
 /**
- * Builds absolute URLs for sitemap.xml (matches React routes: /{lang}/page/{slug}, /{lang}/blog/...).
+ * Builds absolute URLs for sitemap.xml.
+ * Default locale (id) uses no URL prefix; non-default locales use /{lang}/...
  */
 final class SitemapUrlCollector
 {
@@ -23,6 +24,7 @@ final class SitemapUrlCollector
         }
 
         $urls = [];
+        $defaultLocale = ContentLocales::DEFAULT_PUBLIC;
 
         $pageLocales = Page::query()
             ->where('is_published', true)
@@ -41,39 +43,39 @@ final class SitemapUrlCollector
             ->values();
 
         if ($locales->isEmpty()) {
-            $locales = collect([ContentLocales::DEFAULT]);
+            $locales = collect([$defaultLocale]);
         }
 
         $now = now()->format('Y-m-d');
         foreach ($locales as $locale) {
-            $enc = rawurlencode($locale);
+            $prefix = ($locale === $defaultLocale) ? '' : '/'.rawurlencode($locale);
             $urls[] = [
-                'loc' => $base.'/'.$enc.'/',
+                'loc' => $base.$prefix.'/',
                 'lastmod' => $now,
                 'changefreq' => 'weekly',
                 'priority' => '1.0',
             ];
             $urls[] = [
-                'loc' => $base.'/'.$enc.'/compress',
+                'loc' => $base.$prefix.'/compress',
                 'lastmod' => $now,
                 'changefreq' => 'monthly',
                 'priority' => '0.9',
             ];
             $urls[] = [
-                'loc' => $base.'/'.$enc.'/blog',
+                'loc' => $base.$prefix.'/blog',
                 'lastmod' => $now,
                 'changefreq' => 'weekly',
                 'priority' => '0.7',
             ];
             $urls[] = [
-                'loc' => $base.'/'.$enc.'/contact',
+                'loc' => $base.$prefix.'/contact',
                 'lastmod' => $now,
                 'changefreq' => 'yearly',
                 'priority' => '0.4',
             ];
             foreach (['terms', 'privacy-policy', 'disclaimer', 'cookie-policy', 'about-us'] as $legalSlug) {
                 $urls[] = [
-                    'loc' => $base.'/'.$enc.'/legal/'.$legalSlug,
+                    'loc' => $base.$prefix.'/legal/'.$legalSlug,
                     'lastmod' => $now,
                     'changefreq' => 'yearly',
                     'priority' => '0.3',
@@ -91,8 +93,9 @@ final class SitemapUrlCollector
                 continue;
             }
             $locale = ContentLocales::normalize((string) $page->locale);
+            $prefix = ($locale === $defaultLocale) ? '' : '/'.rawurlencode($locale);
             $urls[] = [
-                'loc' => $base.'/'.rawurlencode($locale).'/page/'.rawurlencode($slug),
+                'loc' => $base.$prefix.'/page/'.rawurlencode($slug),
                 'lastmod' => $page->updated_at->format('Y-m-d'),
                 'changefreq' => 'weekly',
                 'priority' => '0.8',
@@ -109,8 +112,9 @@ final class SitemapUrlCollector
                 continue;
             }
             $locale = ContentLocales::normalize((string) $blog->locale);
+            $prefix = ($locale === $defaultLocale) ? '' : '/'.rawurlencode($locale);
             $urls[] = [
-                'loc' => $base.'/'.rawurlencode($locale).'/blog/'.rawurlencode($slug),
+                'loc' => $base.$prefix.'/blog/'.rawurlencode($slug),
                 'lastmod' => $blog->updated_at->format('Y-m-d'),
                 'changefreq' => 'monthly',
                 'priority' => '0.6',

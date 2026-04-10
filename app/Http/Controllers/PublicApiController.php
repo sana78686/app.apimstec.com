@@ -605,7 +605,21 @@ class PublicApiController extends Controller
 
         // Frontend media library files under React public/cms-uploads/... (tenant-specific).
         if (preg_match('#^cms-uploads/[A-Za-z0-9._/-]+$#', $path)) {
-            $abs = FrontendPublicPath::absoluteFromWebPath($path);
+            $abs = null;
+            try {
+                $abs = FrontendPublicPath::absoluteFromWebPath($path);
+            } catch (\Throwable $e) {
+                // FrontendPublicPath may fail if FRONTEND_PUBLIC_PATH is misconfigured
+            }
+
+            // Fallback: check CMS's own public/ directory
+            if (! is_string($abs) || ! is_file($abs)) {
+                $fallback = public_path($path);
+                if (is_file($fallback)) {
+                    $abs = realpath($fallback) ?: $fallback;
+                }
+            }
+
             if (! is_string($abs) || $abs === '' || ! is_file($abs)) {
                 abort(404);
             }
