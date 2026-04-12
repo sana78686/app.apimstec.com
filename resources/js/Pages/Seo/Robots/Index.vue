@@ -33,6 +33,7 @@ function openRobots() {
 
     <div class="admin-list-page">
       <p v-if="successMessage" class="admin-flash admin-flash-success">{{ successMessage }}</p>
+      <p v-if="page.props.flash?.warning" class="admin-flash border border-warning bg-light small mb-3 p-2">{{ page.props.flash.warning }}</p>
 
       <div class="admin-list-page-header">
         <div>
@@ -67,7 +68,7 @@ function openRobots() {
       </div>
 
       <p class="text-muted small border rounded p-3 mb-3 bg-light">
-        Your production frontend build places <code class="admin-list-code">robots.txt</code> and <code class="admin-list-code">sitemap.xml</code> at the root of the live site so URLs above work. After you save here, run a new frontend build and deploy so the live domain stays in sync. The CMS mirror URLs are optional and point at the same rules/XML.
+        <strong>Save</strong> stores rules in the CMS. Your public site can serve this content via <code class="admin-list-code">robots-cms.php</code> (or a build step)—no secrets are required in the CMS for multi-site setups.
       </p>
 
       <form class="admin-box admin-box-smooth" @submit.prevent="form.put(route('seo.robots.update'))">

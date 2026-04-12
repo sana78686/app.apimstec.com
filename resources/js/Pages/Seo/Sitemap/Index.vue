@@ -1,7 +1,7 @@
 <script setup>
 import AdminLocaleSegmentGroup from '@/Components/AdminLocaleSegmentGroup.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -12,6 +12,8 @@ const props = defineProps({
   domainNote: { type: String, default: null },
   localeFilterOptions: { type: Array, default: () => [] },
 });
+
+const page = usePage();
 
 const searchQuery = ref('');
 const copied = ref(false);
@@ -66,7 +68,6 @@ function openSitemap() {
   if (props.sitemapUrl) window.open(props.sitemapUrl, '_blank');
 }
 
-/** Reload list from the server (same rules as live sitemap.xml). */
 function refreshUrlList() {
   refreshing.value = true;
   const p = router.reload({ preserveScroll: true });
@@ -87,6 +88,10 @@ function refreshUrlList() {
     <template #header>Sitemap Manager</template>
 
     <div class="admin-list-page">
+      <p v-if="page.props.flash?.success" class="admin-flash admin-flash-success">{{ page.props.flash.success }}</p>
+      <p v-if="page.props.flash?.warning" class="admin-flash border border-warning bg-light small mb-3 p-2">{{ page.props.flash.warning }}</p>
+      <p v-if="page.props.flash?.error" class="admin-flash border border-danger bg-light small mb-3 p-2">{{ page.props.flash.error }}</p>
+
       <div class="admin-list-page-header">
         <div>
           <h1 class="admin-list-page-title">Sitemap Manager</h1>
