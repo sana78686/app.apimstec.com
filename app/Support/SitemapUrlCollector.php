@@ -36,15 +36,25 @@ final class SitemapUrlCollector
             ->where('visibility', Blog::VISIBILITY_VISIBLE)
             ->pluck('locale');
 
-        /** @var Collection<int, string> $locales */
-        $locales = $pageLocales->concat($blogLocales)
-            ->map(fn ($l) => ContentLocales::normalize((string) $l))
-            ->unique()
-            ->values();
+        /** Locales that appear in published content (pages/blogs). */
+        $localesFromContent = $pageLocales->concat($blogLocales)
+            ->map(fn ($l) => ContentLocales::normalize((string) $l));
 
-        if ($locales->isEmpty()) {
-            $locales = collect([$defaultLocale]);
-        }
+        /**
+         * Include every CMS-supported locale so static routes (/, /compress, /blog, legal, …) exist
+         * for each language — not only locales that already have a page row (fixes missing default "id" URLs when all pages are e.g. en-only).
+         */
+        $locales = collect(ContentLocales::SUPPORTED)
+            ->map(fn ($code) => ContentLocales::normalize((string) $code))
+            ->merge($localesFromContent)
+            ->unique()
+            ->sort(function ($a, $b) {
+                $ia = array_search($a, ContentLocales::SUPPORTED, true);
+                $ib = array_search($b, ContentLocales::SUPPORTED, true);
+
+                return ($ia <=> $ib) ?: strcmp((string) $a, (string) $b);
+            })
+            ->values();
 
         $now = now()->format('Y-m-d');
         foreach ($locales as $locale) {

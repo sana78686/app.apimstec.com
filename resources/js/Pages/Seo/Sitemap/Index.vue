@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -13,6 +13,7 @@ const props = defineProps({
 
 const searchQuery = ref('');
 const copied = ref(false);
+const refreshing = ref(false);
 
 const filteredUrls = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -21,7 +22,10 @@ const filteredUrls = computed(() => {
     (u) =>
       (u.title || '').toLowerCase().includes(q) ||
       (u.path || '').toLowerCase().includes(q) ||
-      (u.url || '').toLowerCase().includes(q)
+      (u.url || '').toLowerCase().includes(q) ||
+      String(u.locale || '')
+        .toLowerCase()
+        .includes(q),
   );
 });
 
@@ -35,6 +39,19 @@ function copySitemapUrl() {
 
 function openSitemap() {
   if (props.sitemapUrl) window.open(props.sitemapUrl, '_blank');
+}
+
+/** Reload list from the server (same rules as live sitemap.xml). */
+function refreshUrlList() {
+  refreshing.value = true;
+  const p = router.reload({ preserveScroll: true });
+  if (p && typeof p.finally === 'function') {
+    p.finally(() => {
+      refreshing.value = false;
+    });
+  } else {
+    refreshing.value = false;
+  }
 }
 </script>
 
@@ -58,7 +75,9 @@ function openSitemap() {
 
       <div v-if="sitemapUrl" class="admin-box admin-box-smooth mb-4">
         <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Sitemap URL (live site)</h2>
-        <p class="text-muted small mb-3">Use this URL in Google Search Console for your public domain. Paths match your React app (<code class="admin-list-code">/{lang}/page/…</code>, <code class="admin-list-code">/{lang}/blog/…</code>). Only <strong>published</strong> and <strong>visible</strong> pages and posts are included.</p>
+          <p class="text-muted small mb-3">
+            Lists every supported locale (static app routes) plus published pages and blogs. Default locale (<code class="admin-list-code">id</code>) has no URL prefix; others use <code class="admin-list-code">/{lang}/…</code>.
+          </p>
         <div class="d-flex flex-wrap align-items-center gap-2">
           <code class="admin-list-code admin-url-path-code flex-grow-1 p-2" style="min-width: 200px;">{{ sitemapUrl }}</code>
           <button
@@ -77,15 +96,25 @@ function openSitemap() {
           >
             Open sitemap
           </button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm admin-btn-focus"
+            title="Reload this list from the database (same URLs as sitemap.xml)"
+            :disabled="refreshing"
+            @click="refreshUrlList"
+          >
+            {{ refreshing ? 'Refreshing…' : 'Refresh URL list' }}
+          </button>
         </div>
         <p v-if="sitemapUrlOnCmsHost" class="text-muted small mb-0 mt-3">
-          If <code class="admin-list-code">/sitemap.xml</code> on the live host does not reach this CMS, submit this same sitemap from the CMS server:
+          <strong>Optional — CMS mirror (same XML):</strong>
           <code class="admin-list-code d-block mt-1">{{ sitemapUrlOnCmsHost }}</code>
+          For Google Search Console, prefer <code class="admin-list-code">{{ sitemapUrl }}</code> on your live domain.
         </p>
       </div>
 
-      <div class="admin-list-toolbar mb-3">
-        <div class="admin-list-search-wrap">
+      <div class="admin-list-toolbar mb-3 d-flex flex-wrap align-items-center gap-2 justify-content-between">
+        <div class="admin-list-search-wrap flex-grow-1" style="min-width: 200px;">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -102,21 +131,33 @@ function openSitemap() {
 
       <div class="admin-box admin-box-smooth">
         <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">URLs in sitemap ({{ count }} total)</h2>
-        <p class="text-muted small mb-3">Only published pages and blog posts appear here. Draft and private content are excluded. Deleted items are removed automatically.</p>
+        <p class="text-muted small mb-3">
+          Includes static app URLs for <strong>every supported locale</strong> plus one row per published page or blog (by its locale). Draft or hidden content is excluded from page/blog rows.
+        </p>
         <div class="admin-list-table-wrap">
           <table class="admin-list-table" role="grid">
             <thead>
               <tr>
                 <th class="admin-url-table-th">Type</th>
+                <th class="admin-url-table-th">Locale</th>
                 <th class="admin-url-table-th">Title</th>
                 <th class="admin-url-table-th">URL</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(u, i) in filteredUrls" :key="u.type + '-' + (u.id ?? i)">
+              <tr v-for="(u, i) in filteredUrls" :key="(u.locale || '') + '-' + u.type + '-' + (u.path || u.url) + '-' + i">
                 <td class="admin-url-table-type">
-                  <span class="admin-list-badge">{{ u.type === 'blog' ? 'Blog' : u.type === 'home' ? 'Home' : 'Page' }}</span>
+                  <span class="admin-list-badge">{{
+                    u.type === 'blog'
+                      ? 'Blog'
+                      : u.type === 'page'
+                        ? 'Page'
+                        : u.type === 'legal'
+                          ? 'Legal'
+                          : 'Home'
+                  }}</span>
                 </td>
+                <td class="admin-url-table-title"><code class="admin-list-code">{{ u.locale || '—' }}</code></td>
                 <td class="admin-url-table-title">{{ u.title }}</td>
                 <td class="admin-url-table-path">
                   <a :href="u.url" target="_blank" rel="noopener noreferrer" class="admin-list-code admin-url-path-code">{{ u.url }}</a>

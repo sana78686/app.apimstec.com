@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seo;
 
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
+use App\Support\ContentLocales;
 use App\Support\SitemapUrlCollector;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,11 +37,21 @@ class SitemapManagerController extends Controller
         $urls = [];
         foreach ($entries as $u) {
             $path = (string) (parse_url($u['loc'], PHP_URL_PATH) ?? '');
+            $locale = ContentLocales::localeFromPublicPath($path);
+            $type = 'home';
+            if (str_contains($path, '/blog/') || preg_match('#(^|/)blog/?$#', $path) === 1) {
+                $type = 'blog';
+            } elseif (str_contains($path, '/page/')) {
+                $type = 'page';
+            } elseif (str_contains($path, '/legal/')) {
+                $type = 'legal';
+            }
             $urls[] = [
-                'type' => str_contains($path, '/blog/') ? 'blog' : (str_contains($path, '/page/') ? 'page' : 'home'),
+                'type' => $type,
                 'title' => $path !== '' ? $path : $u['loc'],
                 'url' => $u['loc'],
                 'path' => $path,
+                'locale' => $locale,
                 'updated_at' => $u['lastmod'].'T00:00:00+00:00',
             ];
         }

@@ -36,6 +36,22 @@ class ContentLocales
     }
 
     /**
+     * Infer locale from a public marketing URL path (leading slash, no query).
+     * Default locale ({@see DEFAULT_PUBLIC}) has no /{lang}/ prefix; first segment is only a locale if it is in SUPPORTED.
+     */
+    public static function localeFromPublicPath(string $path, ?string $defaultLocale = null): string
+    {
+        $default = $defaultLocale ?? self::DEFAULT_PUBLIC;
+        $path = trim($path, '/');
+        if ($path === '') {
+            return $default;
+        }
+        $first = strtolower(explode('/', $path, 2)[0] ?? '');
+
+        return in_array($first, self::SUPPORTED, true) ? $first : $default;
+    }
+
+    /**
      * CMS UI locale: session, then cookie, else English (admin default). URLs no longer embed locale.
      */
     public static function resolveCmsWorkspaceLocale(Request $request): string

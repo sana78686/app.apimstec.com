@@ -44,8 +44,10 @@ function openRobots() {
       </div>
 
       <div class="admin-box admin-box-smooth mb-4">
-        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Live URLs</h2>
-        <p class="text-muted small mb-3">Crawlers read your robots.txt at the URL below. Submit the sitemap in Google Search Console.</p>
+        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">Primary URLs (live domain — use in Google Search Console)</h2>
+        <p class="text-muted small mb-3">
+          Submit and verify these on your <strong>public site</strong>. Crawlers should read <code class="admin-list-code">robots.txt</code> and <code class="admin-list-code">sitemap.xml</code> at your marketing domain (e.g. <code class="admin-list-code">https://example.com/robots.txt</code>), not the CMS app host.
+        </p>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
           <code class="admin-list-code admin-url-path-code p-2" style="min-width: 200px;">{{ robotsUrl }}</code>
           <button
@@ -56,16 +58,16 @@ function openRobots() {
             Open robots.txt
           </button>
         </div>
-          <p class="text-muted small mb-0">Sitemap line should point to: <code class="admin-list-code">{{ sitemapUrl }}</code></p>
-        <p v-if="robotsUrlOnCmsHost" class="text-muted small mb-0 mt-2">
-          Alternate (CMS host, if live domain does not proxy here):<br />
+        <p class="text-muted small mb-0">Sitemap URL for GSC: <code class="admin-list-code">{{ sitemapUrl }}</code></p>
+        <p v-if="robotsUrlOnCmsHost" class="text-muted small mb-0 mt-3">
+          <strong>Optional — same file on the CMS host</strong> (mirror; keep for admin or direct testing):<br />
           <code class="admin-list-code">{{ robotsUrlOnCmsHost }}</code>
           · Sitemap: <code class="admin-list-code">{{ sitemapUrlOnCmsHost }}</code>
         </p>
       </div>
 
       <p class="text-muted small border rounded p-3 mb-3 bg-light">
-        Crawlers must receive this file from your <strong>live site</strong> URL above. If a static <code class="admin-list-code">robots.txt</code> file exists on the server or CDN, remove it so requests reach Laravel and your Allow/Disallow rules apply.
+        Your production frontend build places <code class="admin-list-code">robots.txt</code> and <code class="admin-list-code">sitemap.xml</code> at the root of the live site so URLs above work. After you save here, run a new frontend build and deploy so the live domain stays in sync. The CMS mirror URLs are optional and point at the same rules/XML.
       </p>
 
       <form class="admin-box admin-box-smooth" @submit.prevent="form.put(route('seo.robots.update'))">
