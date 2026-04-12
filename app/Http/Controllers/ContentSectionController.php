@@ -16,8 +16,9 @@ class ContentSectionController extends Controller
     public function index(Request $request): Response
     {
         $loc = ContentLocales::normalize($request->session()->get('cms_locale'));
+        $codes = ContentLocales::publicFilterLocaleCodes();
         $sections = ContentSection::query()
-            ->where('locale', $loc)
+            ->whereIn('locale', $codes)
             ->with('items')
             ->ordered()
             ->get();
@@ -25,6 +26,7 @@ class ContentSectionController extends Controller
         return Inertia::render('ContentManager/Sections', [
             'sections' => $sections,
             'cmsLocale' => $loc,
+            'localeFilterOptions' => ContentLocales::publicFilterSegmentOptions(),
             'flash' => ['success' => session('success')],
         ]);
     }

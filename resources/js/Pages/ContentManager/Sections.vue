@@ -1,4 +1,5 @@
 <script setup>
+import AdminLocaleSegmentGroup from '@/Components/AdminLocaleSegmentGroup.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CmsLocaleSelect from '@/Components/CmsLocaleSelect.vue';
 import Modal from '@/Components/Modal.vue';
@@ -7,12 +8,32 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   sections: { type: Array, default: () => [] },
   cmsLocale: { type: String, default: 'en' },
+  localeFilterOptions: { type: Array, default: () => [] },
   flash: { type: Object, default: () => ({}) },
+});
+
+const selectedLocale = ref('all');
+
+const localeOpts = computed(() =>
+  props.localeFilterOptions?.length
+    ? props.localeFilterOptions
+    : [
+        { value: 'id', label: 'ID' },
+        { value: 'en', label: 'EN' },
+      ],
+);
+
+const filteredSections = computed(() => {
+  const list = props.sections || [];
+  if (selectedLocale.value === 'all') {
+    return list;
+  }
+  return list.filter((s) => String(s.locale || '').toLowerCase() === selectedLocale.value);
 });
 
 const showSectionModal = ref(false);
@@ -160,17 +181,24 @@ function removeItem(item) {
       </div>
 
       <div class="admin-box admin-box-smooth mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
           <div>
             <h1 class="h5 mb-1">Sections module</h1>
             <p class="text-muted mb-0">Create unlimited sections, each with heading/description and module items (cards or paragraphs).</p>
           </div>
-          <PrimaryButton type="button" class="btn btn-sm btn-primary" @click="openSectionAdd">Add section</PrimaryButton>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <AdminLocaleSegmentGroup
+              v-model="selectedLocale"
+              :options="localeOpts"
+              aria-label="Filter sections by locale"
+            />
+            <PrimaryButton type="button" class="btn btn-sm btn-primary" @click="openSectionAdd">Add section</PrimaryButton>
+          </div>
         </div>
       </div>
 
       <div class="d-flex flex-column gap-3">
-        <article v-for="section in sections" :key="section.id" class="admin-box admin-box-smooth p-3">
+        <article v-for="section in filteredSections" :key="section.id" class="admin-box admin-box-smooth p-3">
           <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
             <div>
               <h2 class="h6 mb-1">{{ section.title }}</h2>
@@ -290,6 +318,7 @@ function removeItem(item) {
       </div>
 
       <p v-if="!sections.length" class="admin-text-muted mt-3">No sections yet. Add your first section to start building dynamic frontend blocks.</p>
+      <p v-else-if="!filteredSections.length" class="admin-text-muted mt-3">No sections for this locale. Switch to <strong>All</strong> or another language.</p>
     </div>
 
     <Modal :show="showSectionModal" @close="showSectionModal = false">

@@ -25,6 +25,7 @@ class SitemapManagerController extends Controller
                 'urls' => [],
                 'count' => 0,
                 'domainNote' => 'Select a website (domain) to see sitemap URLs for that property.',
+                'localeFilterOptions' => ContentLocales::publicFilterSegmentOptions(),
             ]);
         }
 
@@ -62,6 +63,7 @@ class SitemapManagerController extends Controller
             'urls' => $urls,
             'count' => count($urls),
             'domainNote' => null,
+            'localeFilterOptions' => ContentLocales::publicFilterSegmentOptions(),
         ]);
     }
 }

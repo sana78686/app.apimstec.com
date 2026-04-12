@@ -89,4 +89,44 @@ class ContentLocales
 
         return $out;
     }
+
+    /**
+     * Locales for CMS segmented filters (see config/seo.php public_locales).
+     *
+     * @return list<string>
+     */
+    public static function publicFilterLocaleCodes(): array
+    {
+        $configured = config('seo.public_locales', ['id', 'en']);
+        if (! is_array($configured)) {
+            $configured = ['id', 'en'];
+        }
+        $out = [];
+        foreach ($configured as $c) {
+            $n = self::normalize((string) $c);
+            if (in_array($n, self::SUPPORTED, true) && ! in_array($n, $out, true)) {
+                $out[] = $n;
+            }
+        }
+
+        return $out !== [] ? $out : ['id', 'en'];
+    }
+
+    /**
+     * Options for AdminLocaleSegmentGroup (value + short label, e.g. EN, ID).
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    public static function publicFilterSegmentOptions(): array
+    {
+        $opts = [];
+        foreach (self::publicFilterLocaleCodes() as $code) {
+            $opts[] = [
+                'value' => $code,
+                'label' => strtoupper($code),
+            ];
+        }
+
+        return $opts;
+    }
 }

@@ -86,7 +86,9 @@ class BlogController extends Controller
         if ($request->is('api/*')) {
             return response()->json(['blogs' => $blogs]);
         }
-        return Inertia::render('Blogs/Index');
+        return Inertia::render('Blogs/Index', [
+            'localeFilterOptions' => ContentLocales::publicFilterSegmentOptions(),
+        ]);
     }
 
     public function create(): Response|JsonResponse

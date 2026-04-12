@@ -1,4 +1,5 @@
 <script setup>
+import AdminLocaleSegmentGroup from '@/Components/AdminLocaleSegmentGroup.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -9,16 +10,31 @@ const props = defineProps({
   urls: { type: Array, default: () => [] },
   count: { type: Number, default: 0 },
   domainNote: { type: String, default: null },
+  localeFilterOptions: { type: Array, default: () => [] },
 });
 
 const searchQuery = ref('');
 const copied = ref(false);
 const refreshing = ref(false);
+const selectedLocale = ref('all');
+
+const localeOpts = computed(() =>
+  props.localeFilterOptions?.length
+    ? props.localeFilterOptions
+    : [
+        { value: 'id', label: 'ID' },
+        { value: 'en', label: 'EN' },
+      ],
+);
 
 const filteredUrls = computed(() => {
+  let list = props.urls;
+  if (selectedLocale.value !== 'all') {
+    list = list.filter((u) => String(u.locale || '') === selectedLocale.value);
+  }
   const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return props.urls;
-  return props.urls.filter(
+  if (!q) return list;
+  return list.filter(
     (u) =>
       (u.title || '').toLowerCase().includes(q) ||
       (u.path || '').toLowerCase().includes(q) ||
@@ -27,6 +43,15 @@ const filteredUrls = computed(() => {
         .toLowerCase()
         .includes(q),
   );
+});
+
+const tableCountLabel = computed(() => {
+  const n = filteredUrls.value.length;
+  const total = props.count;
+  if (selectedLocale.value !== 'all' || searchQuery.value.trim()) {
+    return `${n} shown (${total} total)`;
+  }
+  return `${total} total`;
 });
 
 function copySitemapUrl() {
@@ -113,7 +138,13 @@ function refreshUrlList() {
         </p>
       </div>
 
-      <div class="admin-list-toolbar mb-3 d-flex flex-wrap align-items-center gap-2 justify-content-between">
+      <div class="admin-list-toolbar mb-3 d-flex flex-wrap align-items-center gap-3 justify-content-between">
+        <AdminLocaleSegmentGroup
+          v-if="urls.length"
+          v-model="selectedLocale"
+          :options="localeOpts"
+          aria-label="Filter sitemap URLs by locale"
+        />
         <div class="admin-list-search-wrap flex-grow-1" style="min-width: 200px;">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8" />
@@ -130,7 +161,7 @@ function refreshUrlList() {
       </div>
 
       <div class="admin-box admin-box-smooth">
-        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">URLs in sitemap ({{ count }} total)</h2>
+        <h2 class="admin-form-page-title admin-form-page-title-sm mb-3" style="font-size: 1rem;">URLs in sitemap ({{ tableCountLabel }})</h2>
         <p class="text-muted small mb-3">
           Includes static app URLs for <strong>every supported locale</strong> plus one row per published page or blog (by its locale). Draft or hidden content is excluded from page/blog rows.
         </p>

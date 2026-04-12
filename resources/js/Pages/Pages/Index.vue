@@ -1,8 +1,13 @@
 <script setup>
+import AdminLocaleSegmentGroup from '@/Components/AdminLocaleSegmentGroup.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Pagination from '@/Components/Pagination.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
+
+const props = defineProps({
+  localeFilterOptions: { type: Array, default: () => [] },
+});
 
 const pages = ref([]);
 const loading = ref(true);
@@ -10,15 +15,14 @@ const successMessage = ref('');
 const searchQuery = ref('');
 const selectedLocale = ref('all');
 
-const LOCALE_ORDER = ['id', 'en', 'ms', 'es', 'fr', 'ar', 'ru'];
-const localeButtons = computed(() => {
-  const present = new Set(flatPages.value.map((p) => String(p.locale || '').toLowerCase()).filter(Boolean));
-  const ordered = LOCALE_ORDER.filter((code) => present.has(code));
-  for (const code of present) {
-    if (!ordered.includes(code)) ordered.push(code);
-  }
-  return [{ value: 'all', label: 'All' }, ...ordered.map((code) => ({ value: code, label: code.toUpperCase() }))];
-});
+const localeOpts = computed(() =>
+  props.localeFilterOptions?.length
+    ? props.localeFilterOptions
+    : [
+        { value: 'id', label: 'ID' },
+        { value: 'en', label: 'EN' },
+      ],
+);
 
 /** Flatten tree (parent + children) into rows for table; each row has _level (0 = parent, 1 = child). */
 function flattenPages(tree) {
@@ -141,18 +145,11 @@ async function destroy(p) {
           <h1 class="admin-list-page-title">Pages</h1>
           <p class="admin-list-page-desc">Website pages for header/footer (e.g. FAQ, Contact us). Child pages appear under their parent on the frontend.</p>
         </div>
-        <div class="admin-locale-filter-row" role="tablist" aria-label="Filter pages by language">
-          <button
-            v-for="opt in localeButtons"
-            :key="opt.value"
-            type="button"
-            class="admin-locale-chip"
-            :class="{ 'admin-locale-chip--active': selectedLocale === opt.value }"
-            @click="selectedLocale = opt.value"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
+        <AdminLocaleSegmentGroup
+          v-model="selectedLocale"
+          :options="localeOpts"
+          aria-label="Filter pages by locale"
+        />
         <Link :href="route('pages.create')" class="admin-list-page-cta">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -255,27 +252,3 @@ async function destroy(p) {
     </div>
   </AuthenticatedLayout>
 </template>
-
-<style scoped>
-.admin-locale-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: center;
-  align-items: center;
-}
-.admin-locale-chip {
-  border: 1px solid var(--admin-card-border, #e6e8ef);
-  background: #fff;
-  color: var(--admin-text-muted, #666687);
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.3rem 0.65rem;
-}
-.admin-locale-chip--active {
-  color: #fff;
-  background: var(--admin-primary, #4945ff);
-  border-color: var(--admin-primary, #4945ff);
-}
-</style>

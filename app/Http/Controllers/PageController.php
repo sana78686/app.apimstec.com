@@ -77,7 +77,9 @@ class PageController extends Controller
         if ($request->is('api/*')) {
             return response()->json(['pages' => $pages]);
         }
-        return Inertia::render('Pages/Index');
+        return Inertia::render('Pages/Index', [
+            'localeFilterOptions' => ContentLocales::publicFilterSegmentOptions(),
+        ]);
     }
 
     public function create(): Response|JsonResponse
